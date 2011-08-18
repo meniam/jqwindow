@@ -1,0 +1,154 @@
+.jqwindow {
+	border: 1px solid #D0D0D0;
+	position: absolute;
+	background: #ffffff;
+	z-index: 1000;
+}
+
+.jqwindow_normal {
+	box-shadow: 0px 0px 10px #BBB;
+	border-radius: 0.3em;
+}
+
+.jqwindow_basic {
+	background: #ffffff;
+}
+
+.jqwindow_masked {
+	background: #CCCCCC;
+}
+
+.jqwindow_framed {
+	background: #F1F1F1;
+}
+
+.jqwindow > .jqwindow_body {
+	overflow: hidden;
+}
+
+.jqwindow.jqwindow_scrollable > .jqwindow_body {
+	overflow: auto;
+}
+
+.jqwindow_padded > .jqwindow_body > .jqwindow_content {
+	margin: 5px;
+}
+
+.jqwindow_padded-basic > .jqwindow_body > .jqwindow_content,
+.jqwindow_padded-masked > .jqwindow_body > .jqwindow_content,
+.jqwindow_padded-framed > .jqwindow_body > .jqwindow_content {
+	margin: 5px;
+	border: 1px solid #D0D0D0;
+}
+
+.jqwindow_padded-basic > .jqwindow_body > .jqwindow_content {
+	background: #ffffff;
+}
+
+.jqwindow_padded-masked > .jqwindow_body > .jqwindow_content {
+	background: #CCC;
+}
+
+.jqwindow_padded-framed > .jqwindow_body > .jqwindow_content {
+	background: #F1F1F1;
+}
+
+.jqwindow > .jqwindow_header {
+	background-color: #D7D2D2;
+	background-image: -moz-linear-gradient(center top, #F0F0F0, #D7D7D7);
+	border-bottom: 1px solid #D0D0D0;
+	box-shadow: 0 1px 0 0 #EFEDED inset;
+	padding: 0.7em 1em;
+	line-height: 1em;
+	font-size: 0.7em;
+}
+
+.jqwindow > .jqwindow_header {
+	background-image: url("http://dev.sencha.com/deploy/ext-4.0.2a/examples/themes/../../resources/themes/images/gray/panel-header/panel-header-default-top-bg.gif");
+}
+
+.jqwindow > .jqwindow_header.draggable {
+	cursor: move;
+}
+
+.jqwindow > .jqwindow_header > .jqwindow_favicon {
+	float: left;
+	margin-right: 0.5em;
+}
+
+.jqwindow > .jqwindow_header > .jqwindow_title {
+	overflow: hidden;
+	white-space: nowrap;
+	display: inline-block;
+	vertical-align: top;
+	width: 0;
+	color: #333333;
+	font-family: tahoma, arial, verdana, sans-serif;
+	font-weight: bold;
+}
+
+.jqwindow > .jqwindow_header > .jqwindow_action_bar {
+	vertical-align: top;
+	display: inline-block;
+	float: right;
+}
+
+.jqwindow > .jqwindow_header > .jqwindow_action_bar > .jqwindow_button {
+	cursor: pointer;
+	display: inline-block;
+	vertical-align: top;
+	*display: inline;
+	height: 15px;
+	margin: 0 4px;
+	width: 15px;
+}
+
+.jqwindow > .jqwindow_header > .jqwindow_action_bar > .jqwindow_button:last-child {
+	margin-right: 0;
+}
+
+.jqwindow > .jqwindow_header > .jqwindow_action_bar > .jqwindow_button.jqwindow_collapse {
+	background: url("../img/tool-sprites.gif") no-repeat scroll 0 -15px transparent;
+}
+.jqwindow > .jqwindow_header > .jqwindow_action_bar > .jqwindow_button.jqwindow_collapse:hover {
+	background: url("../img/tool-sprites.gif") no-repeat scroll -15px -15px transparent;
+}
+
+.jqwindow > .jqwindow_header > .jqwindow_action_bar > .jqwindow_button.jqwindow_minimize {
+	background: url("../img/tool-sprites.gif") no-repeat scroll 0 -45px transparent;
+}
+.jqwindow > .jqwindow_header > .jqwindow_action_bar > .jqwindow_button.jqwindow_minimize:hover {
+	background: url("../img/tool-sprites.gif") no-repeat scroll -15px -45px transparent;
+}
+
+.jqwindow > .jqwindow_header > .jqwindow_action_bar > .jqwindow_button.jqwindow_maximize {
+	background: url("../img/tool-sprites.gif") no-repeat scroll 0 -30px transparent;
+}
+.jqwindow > .jqwindow_header > .jqwindow_action_bar > .jqwindow_button.jqwindow_maximize:hover {
+	background: url("../img/tool-sprites.gif") no-repeat scroll -15px -30px transparent;
+}
+
+.jqwindow > .jqwindow_header > .jqwindow_action_bar > .jqwindow_button.jqwindow_close {
+	background: url("../img/tool-sprites.gif") no-repeat scroll 0 0 transparent;
+}
+.jqwindow > .jqwindow_header > .jqwindow_action_bar > .jqwindow_button.jqwindow_close:hover {
+	background: url("../img/tool-sprites.gif") no-repeat scroll -15px 0 transparent;
+}
+
+.jqwindow > .jqwindow_header > .jqwindow_action_bar > .jqwindow_button > em {
+	display: none;
+}
+
+.jqwindow .jqwindow {
+	width: auto;
+	height: auto;
+}
+
+.jqwindow_overlay {
+	background: none repeat scroll 0 0 #FFFFFF;
+    left: 0;
+    opacity: 0.5;
+    position: fixed;
+    top: 0;
+    z-index: 50;
+}
