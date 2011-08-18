@@ -8,7 +8,7 @@
 	<link rel="stylesheet" href="skins/gray/css/screen.css">
 	<script type="text/javascript">
 		$(document).ready(function() {
-			new $.jqWindow('test', {
+			w = new $.jqWindow('test', {
 				title : 'Шла Саша по шоссе и сосала соску &copy; Руская народная скороговорка',
 				width : 1000,
 				onBeforeShow : function() {
@@ -22,6 +22,21 @@
 				},
 				onAfterShow : function(jqW) {
 					jqW.setContent('Test test');
+                    new $.jqWindow('test2', {
+                        title : 'Дочернее окно',
+                        width : '20%',
+                        onAfterShow : function(jqW) {
+                            //jqW.setContent('hi');
+                            new $.jqWindow('test3', {
+                                title : '1',
+                                width : '10%',
+                                onBeforeClose : function(jqW) {
+                                    return jqW.closeParent(2);
+                                }
+                            }, jqW).show();
+                        }
+                    }, jqW).show();
+
 					//alert('show end');
 				},
 				onAfterCreate : function(jqW) {
