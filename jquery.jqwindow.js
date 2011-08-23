@@ -21,33 +21,26 @@
  */
 $.jqWindow = function(name, options, parentWindow)
 {
+    this.settings    = $.extend(true, {}, $.jqWindow.defaults, options);
+    this.name        = name;
+    this.container   = this.settings.container ? $(this.settings.container) : null;
     this.parent      = null;
     this.childList   = [];
 
-    if (parentWindow && (typeof(parentWindow) == 'string' || typeof(parentWindow) == 'integer')) {
-        this.parent = $.jqWindowManager().getWindowById(parentWindow);
-    } else if (parentWindow && (typeof(parentWindow) == 'object')) {
-        this.parent = parentWindow;
-    }
 
-    this.settings    = $.extend(true, {}, $.jqWindow.defaults, options);
-    this.name        = name;
-    this.container    = this.settings.container ? $(this.settings.container) : null;
-    this.init();
+    this.init(parentWindow);
 };
 
 $.extend($.jqWindow, {
-    id    : null,
-    defaults: {
-        zIndexStart              : 10000,
+    defaults : {
         type                     : 'jqwindow_normal jqwindow_padded', // window type [jqwindow_normal, jqwindow_basic, jqwindow_shadow, jqwindow_framed, jqwindow_masked, jqwindow_padded_basic, jqwindow_padded]
         title                    : '&nbsp;',
         footerContent            : '',
         container                : null,
         width                    : 400,
         height                   : 400,
-        minWidth                 : 0,
-        minHeight                : 0,
+        minWidth                 : 100,
+        minHeight                : 100,
         maxWidth                 : 0,
         maxHeight                : 0,
         posX                     : -1,
@@ -58,6 +51,7 @@ $.extend($.jqWindow, {
         minimizable              : true,
         maximizable              : true,
         draggable                : true,
+        resizeable               : true,
         overlayable              : false,
         modal                    : false,
         minimizeArea             : 'left',
@@ -84,28 +78,78 @@ $.extend($.jqWindow, {
         headerFoldingExpandButtonClass           : 'jqwindow_folding_expand',
 
         // HOOK defaults 
-        onBeforeShow        : function(jqWindow) { return true; },
-        onAfterShow            : function(jqWindow) { return true; },
-        onBeforeCreate        : function() { return true; },
-        onAfterCreate        : function(jqWindow) { return true; },
-        onBeforeClose        : function(jqWindow) { return true; },
-        onAfterClose        : function() { return true; }
+        onBeforeShow                             : function(jqWindow) { return true; },
+        onAfterShow                              : function(jqWindow) { return true; },
+        onBeforeCreate                           : function()         { return true; },
+        onAfterCreate                            : function(jqWindow) { return true; },
+        onBeforeClose                            : function(jqWindow) { return true; },
+        onAfterClose                             : function()         { return true; }
     },
 
-    prototype: {
+    prototype : {
         /**
          * Create window (@see create()),
          * and register it in the window manager
          */
-        init: function()
+        init : function(parentWindow)
         {
-            this.create();
-            this.id = $.jqWindowManager().registryWindow(this);
+            if (this.create()) {
+                this.setParent(parentWindow);
+                if (!this.parent) {
+                    this.setParent($.jqWindowManager().getCurrentWindow());
+                }
+                if ($.jqWindowManager().registryWindow(this)) {
+                    this.window.attr('id', 'jqwindow_' + this.getId());
+                }
+                this.settings.onAfterCreate(this);
+            }
         },
 
         addChild : function(jqWindow)
         {
-            this.childList[jqWindow.getWindowId()] = jqWindow;
+            if (jqWindow && (typeof(jqWindow) == 'string' || typeof(jqWindow) == 'integer')) {
+                jqWindow = $.jqWindowManager().getWindow(jqWindow);
+            }
+            if (jqWindow instanceof $.jqWindow) {
+                this.childList.push(jqWindow);
+            }
+        },
+
+        deleteChild : function(jqWindow)
+        {
+            jqWindow = $.jqWindowManager().getWindow(jqWindow);
+            if (jqWindow instanceof $.jqWindow) {
+                for (var key in this.childList) {
+                    if (this.childList[key] == jqWindow) {
+                        this.childList.splice(key, 1);
+                    }
+                }
+            }
+        },
+
+        getChildCount : function()
+        {
+            return this.childList.length;
+        },
+
+        getParent : function()
+        {
+            return this.parent;
+        },
+
+        setParent : function(parentWindow)
+        {
+            if (parentWindow && (typeof(parentWindow) == 'string' || typeof(parentWindow) == 'integer')) {
+                parentWindow = $.jqWindowManager().getWindow(parentWindow);
+            }
+
+            if (parentWindow instanceof $.jqWindow && this.parent != parentWindow) {
+                if (this.parent) {
+                    this.parent.deleteChild(this);
+                }
+                parentWindow.addChild(this);
+                this.parent = parentWindow;
+            }
         },
 
         /**
@@ -122,18 +166,15 @@ $.extend($.jqWindow, {
                 itemsToClose = 1;
             }
 
-            var current = this;
-            var windowListToClose = [];
-            for (i=0;i<itemsToClose;i++) {
-                current = current.parent;
-                if (current) {
-                    windowListToClose[i] = current;
+            var closedCount = 0;
+            var item = this;
+            while (item = item.getParent()) {
+                if (closedCount >= itemsToClose) {
+                    break;
                 }
+                item.close();
+                closedCount++;
             }
-
-            $.each(windowListToClose, function(k, v) {
-                v.close();
-            });
 
             return true;
         },
@@ -152,13 +193,15 @@ $.extend($.jqWindow, {
             // if window exists (second call) or BeforeCreate return false
             // value we are don't create DOM structure
             if (this.window || !this.settings.onBeforeCreate()) {
-                return;
+                return false;
             }
 
             var jqWindow = this;
             var windowContainer = this.container ? this.container : $('body');
 
-            $.jqWindow.showOverlay(windowContainer, this);
+            if (this.settings.overlayable) {
+                $.jqWindow.createOverlay(windowContainer, this.settings.overlayClass);
+            }
 
             // Calculate window width and height
             var windowWidth = this.settings.width;
@@ -172,14 +215,12 @@ $.extend($.jqWindow, {
             }
 
             windowWidth = (this.settings.minWidth > 0 && windowWidth < this.settings.minWidth) ? this.settings.minWidth : ((this.settings.maxWidth > 0 && windowWidth > this.settings.maxWidth) ? this.settings.maxWidth : windowWidth);
-            windowHeight = (this.settings.minHeight > 0 && windowHeight < this.settings.minHeight) ? this.settings.maxHeight : ((this.settings.maxHeight > 0 && windowHeight > this.settings.maxHeight) ? this.settings.maxHeight : windowHeight);
+            windowHeight = (this.settings.minHeight > 0 && windowHeight < this.settings.minHeight) ? this.settings.minHeight : ((this.settings.maxHeight > 0 && windowHeight > this.settings.maxHeight) ? this.settings.maxHeight : windowHeight);
 
             // create common DOM-structure
-             this.window = $('<div></div>').addClass(this.settings.windowClass)
-                                           .addClass(this.settings.type)
-                                          .attr('id', 'jqwindow_' + $.jqWindowManager().getWindowCount())
+            this.window = $('<div></div>').addClass(this.settings.windowClass)
+                                          .addClass(this.settings.type)
                                           .attr('name', this.name)
-                                          .css('z-index', this.settings.zIndexStart + $.jqWindowManager().getWindowCount())
                                           .width(windowWidth)
                                           .height(windowHeight)
                                           .appendTo(windowContainer);
@@ -203,7 +244,7 @@ $.extend($.jqWindow, {
 
             this.window.css({
                 left    : windowPosX,
-                top        : windowPosY
+                top     : windowPosY
             });
 
             // Scrollable setting just add scrollableClass
@@ -212,32 +253,60 @@ $.extend($.jqWindow, {
                 this.window.addClass(this.settings.scrollableClass);
             }
 
+            /**
+             * Window focus/blur
+             *
+             * @todo need to add hooks onBeforeFocus()/onAfterFocus()/onBeforeBlur()/onAfterBlur()
+             */
+            this.window.mousedown(function() {
+                jqWindow.focus();
+            });
+
             // Create and append header to window
             this.header = $('<div></div>').addClass(this.settings.headerClass)
                                            .appendTo(this.window);
 
             if (this.settings.draggable) {
                 this.header.addClass('draggable')
-                           .bind('mousedown.app_window', function(event) {
+                           .bind('mousedown.jqwindow_drag', function(event) {
                                 jqWindow.window.addClass('drag');
                                 var mousePos = {x : event.pageX - parseInt(jqWindow.window.offset().left),
                                                 y : event.pageY - parseInt(jqWindow.window.offset().top)}
                                 var i = 0;
-                                $(window).bind('mousemove.app_window_drag', function(event) {
+                                $(window).bind('mousemove.jqwindow_drag', function(event) {
                                     jqWindow.drag(mousePos, event);
                                     event.preventDefault();
                                 });
                                 event.preventDefault();
-                            });
-                $(window).bind('mouseup.app_window', function(event) {
+                           });
+                $(window).bind('mouseup.jqwindow_drag', function(event) {
                     jqWindow.window.removeClass('drag');
-                    $(window).unbind('mousemove.app_window_drag');
+                    $(window).unbind('mousemove.jqwindow_drag');
                 });
             }
 
             // create window header action bar
             this.headerActionBar = $('<span></span>').addClass(this.settings.headerActionBarClass)
                                                      .appendTo(this.header);
+
+
+            // create maximize/minimize button
+            if (this.settings.maximizable) {
+                $('<a href="javascript:void(0)"></a>').appendTo(this.headerActionBar)
+                                                      .addClass(this.settings.headerButtonClass + ' ' + this.settings.headerMaximizeButtonClass)
+                                                      .click(function() {
+                                                          jqWindow.maximize();
+                                                      })
+                                                      .append('<em>Maximize</em>');
+
+                $('<a href="javascript:void(0)"></a>').appendTo(this.headerActionBar)
+                                                      .addClass(this.settings.headerButtonClass + ' ' + this.settings.headerMinimizeButtonClass)
+                                                      .click(function() {
+                                                          jqWindow.minimize();
+                                                      })
+                                                      .hide()
+                                                      .append('<em>Minimize</em>');
+            }
 
             // create close button
             if (this.settings.closeable) {
@@ -248,18 +317,7 @@ $.extend($.jqWindow, {
                                                       })
                                                       .append('<em>Close</em>');
             }
-
-            /*if (settings.maximizable) {
-                headerActionBar.append("<div title='maximize window' class='maximize button'></div>");
-                headerActionBar.append("<div title='cascade window' class='cascade button' style='display:none;'></div>");
-                headerActionBar.children('.maximize').click(function() {
-                    maximize();
-                });
-                headerActionBar.children('.cascade').click(function() {
-                    restore();
-                });
-            }
-
+/*
             if (settings.minimizable) {
                 headerActionBar.append("<div title='minimize window' class='minimize button'></div>");
                 headerActionBar.children('.minimize').click(function() {
@@ -271,36 +329,21 @@ $.extend($.jqWindow, {
                 return false;
             });*/
 
-            // create window title
-            $('<span></span>').addClass(this.settings.headerTitleClass)
-                              .html(this.settings.title)
-                              .width(this.header.width() - this.headerActionBar.width() - 5)
-                              .appendTo(this.header);
-
-            /*if (this.settings.maximizable) {
+            if (this.settings.maximizable) {
                 this.header.dblclick(function() {
-                    if (this.maximized) {
-                        restore($window);
+                    if (jqWindow.maximized) {
+                        jqWindow.minimize();
                     } else {
-                        maximize($window);
+                        jqWindow.maximize();
                     }
                 });
-            }*/
+            }
 
-            /**
-             * Window focus/blur
-             *
-             * @todo need to add hooks onBeforeFocus()/onAfterFocus()/onBeforeBlur()/onAfterBlur()
-             */
-            this.window.mousedown(function() {
-                // Current window (top window)
-                var currentWindow = $.jqWindowManager().getCurrentWindow();
-                var tmp = $(this).css('z-index');
-
-                $(this).css('z-index', currentWindow.window.css('z-index'));
-                currentWindow.window.css('z-index', tmp);
-                $.jqWindowManager().setCurrentWindowById($(this).attr('id'));
-            });
+            // create window title
+            this.title = $('<span></span>').addClass(this.settings.headerTitleClass)
+                                           .html(this.settings.title)
+                                           .width(this.header.width() - this.headerActionBar.width() - 5)
+                                           .appendTo(this.header);
 
             if (this.settings.footerContent) {
                 this.footer = $('<div></div>').addClass(this.settings.footerClass)
@@ -315,15 +358,65 @@ $.extend($.jqWindow, {
                                             })
                                            .appendTo(this.window);
             var contentHeight = this.window.height() - this.header.outerHeight(true) - (this.content.outerHeight(true) - this.content.height());
-            this.content.height('100%');
+            this.content.wrap($('<div></div>').addClass(this.settings.bodyClass)
+                                              .height(contentHeight));
+            this.body = this.content.parent();
 
-            this.body = this.content.wrap($('<div></div>').addClass(this.settings.bodyClass).height(contentHeight));
+            if (this.settings.resizeable) {
+                $('<div></div>').css({position : 'absolute',
+                                      top    : 0,
+                                      right   : 0,
+                                      cursor : 'w-resize',
+                                      width  : '3px',
+                                      height : this.window.height()})
+                                .bind('mousedown.jqwindow_resize', function(event) {
+                                    jqWindow.window.addClass('resize');
+                                    $(window).bind('mousemove.jqwindow_resize', function(event) {
+                                        jqWindow.resize(event, 'east');
+                                        event.preventDefault();
+                                    });
+                                    event.preventDefault();
+                                })
+                                .appendTo(this.window);
+                $('<div></div>').css({position : 'absolute',
+                                      bottom : 0,
+                                      left   : 0,
+                                      cursor : 's-resize',
+                                      width  : this.window.width(),
+                                      height : '5px'})
+                                .bind('mousedown.jqwindow_resize', function(event) {
+                                    jqWindow.window.addClass('resize');
+                                    $(window).bind('mousemove.jqwindow_resize', function(event) {
+                                        jqWindow.resize(event, 'south');
+                                        event.preventDefault();
+                                    });
+                                    event.preventDefault();
+                                })
+                                .appendTo(this.window);
+                $('<div></div>').css({position : 'absolute',
+                                      bottom : 0,
+                                      right  : 0,
+                                      width  : '5px',
+                                      height : '5px',
+                                      cursor : 'se-resize'})
+                                .bind('mousedown.jqwindow_resize', function(event) {
+                                    jqWindow.window.addClass('resize');
+                                    $(window).bind('mousemove.jqwindow_resize', function(event) {
+                                        jqWindow.resize(event, 'south-east');
+                                        event.preventDefault();
+                                    });
+                                    event.preventDefault();
+                                })
+                                .appendTo(this.window);
+                $(window).bind('mouseup.jqwindow_resize', function(event) {
+                    jqWindow.window.removeClass('resize');
+                    $(window).unbind('mousemove.jqwindow_resize');
+                });
+            }
+
             this.window.hide();
 
-            // new created window is always on top (current)
-            $.jqWindowManager().setCurrentWindow(this);
-
-            this.settings.onAfterCreate(this);
+            return true;
         },
 
         /**
@@ -336,6 +429,9 @@ $.extend($.jqWindow, {
         show : function()
         {
             if (this.settings.onBeforeShow(this)) {
+                /*if (this.settings.overlayable) {
+                    $.jqWindow.showOverlay(this.window.css('z-index') - 1);
+                }*/
                 this.window.show();
                 this.settings.onAfterShow(this);
             }
@@ -362,12 +458,23 @@ $.extend($.jqWindow, {
         {
             if (this.settings.onBeforeClose(this)) {
                 this.window.remove();
-                $.jqWindowManager().removeWindow(this.id);
-                this.settings.onAfterClose();
-                $.jqWindow.hideOverlay();
-            }
+                $.jqWindowManager().removeWindow(this.getId());
+                if (this.getParent()) {
+                    this.getParent().deleteChild(this.getId());
+                }
+                if (this.getChildCount()) {
+                    $.each(this.childList, function(key, jqWindow) {
+                        jqWindow.parent = null;
+                    })
+                }
 
-            return true
+                /*if (!$.jqWindowManager().getWindowCount()) {
+                    $.jqWindow.hideOverlay();
+                }*/
+
+                this.settings.onAfterClose();
+            }
+            return true;
         },
 
         /**
@@ -376,7 +483,8 @@ $.extend($.jqWindow, {
          * @param mousePos mouse position at screen (browser window)
          * @param event event object
          */
-        drag : function (mousePos, event) {
+        drag : function (mousePos, event)
+        {
             event = event ? event : window.event;
             var posX = event.pageX - mousePos.x,
                 posY = event.pageY - mousePos.y;
@@ -406,38 +514,118 @@ $.extend($.jqWindow, {
             });
         },
 
-        maximize : function() {
+        resize : function (event, direction)
+        {
+            event = event ? event : window.event;
+
+            var screenDimensions = $.jqWindow.getBrowserScreenDimensions();
+            var scrollPosition = $.jqWindow.getBrowserScrollPosition();
+            if (direction == 'south-east' || direction == 'east') {
+                var width = event.pageX - this.window.offset().left;
+                var minWidth = this.settings.minWidth;
+                var maxWidth = this.settings.maxWidth ? this.settings.maxWidth : (this.container ? this.container.width() : screenDimensions.width - (this.window.offset().left - scrollPosition.x));
+                width = width < minWidth ? minWidth : (width > maxWidth ? maxWidth : width);
+                this.window.width(width);
+            }
+            if (direction == 'south-east' || direction == 'south') {
+                var height = event.pageY - this.window.offset().top;
+                var minHeight = this.settings.minHeight;
+                var maxHeight = this.settings.maxHeight ? this.settings.maxHeight : (this.container ? this.container.height() : screenDimensions.height - (this.window.offset().top - scrollPosition.y));
+                height = height < minHeight ? minHeight : (height > maxHeight ? maxHeight : height);
+                this.window.height(height);
+            }
+            $.jqWindow.recountSizeWindowItems(this);
+        },
+
+        maximize : function()
+        {
             if (!this.container) {
                 $.jqWindow.hideBrowserScrollbar();
-                var newDimensions = getBrowserScreenDimensions();
-                var newPos = getBrowserScrollPosition();
+                var newDimensions = $.jqWindow.getBrowserScreenDimensions();
+                var newPos = $.jqWindow.getBrowserScrollPosition();
             } else {
-                var newDimensions = {width    : container.width(),
-                                     height : container.height()};
-                var newPos = {x    : container.offset().left,
-                              y    : container.offset().top};
+                var newDimensions = {width  : this.container.width(),
+                                     height : this.container.height()};
+                var newPos = {x : this.container.offset().left,
+                              y : this.container.offset().top};
             }
 
-            windowSaveParams = {width    : $window.width(),
-                                height    : $window.height(),
-                                x        : $window.offset().left,
-                                y        : $window.offset().top}
+            this.windowSaveParams = {width  : this.window.width(),
+                                     height : this.window.height(),
+                                     x      : this.window.offset().left,
+                                     y      : this.window.offset().top}
 
-            $window.css({
+            this.window.css({
                 width    : newDimensions.width,
-                height    : newDimensions.height,
-                top        : newPos.y,
-                left    : newPos.x
+                height   : newDimensions.height,
+                top      : newPos.y,
+                left     : newPos.x
             });
 
-            headerActionBar.children(".maximize").hide();
-            headerActionBar.children(".cascade").show();
-            maximized = true;
+            this.headerActionBar.children('.' + this.settings.headerMaximizeButtonClass).hide();
+            this.headerActionBar.children('.' + this.settings.headerMinimizeButtonClass).show();
+            this.maximized = true;
+            
+            $.jqWindow.recountSizeWindowItems(this);
+        },
+
+        minimize : function() {
+            if (!this.container) {
+                $.jqWindow.showBrowserScrollbar();
+            }
+
+            if (this.windowSaveParams) {
+                this.window.css({
+                    width	: this.windowSaveParams.width,
+                    height	: this.windowSaveParams.height,
+                    top		: this.windowSaveParams.y,
+                    left	: this.windowSaveParams.x
+                });
+            }
+            this.headerActionBar.children('.' + this.settings.headerMaximizeButtonClass).show();
+            this.headerActionBar.children('.' + this.settings.headerMinimizeButtonClass).hide();
+            this.maximized = false;
+            
+            $.jqWindow.recountSizeWindowItems(this);
+        },
+
+        /**
+         * Focus window
+         */
+        focus : function()
+        {
+            // Current window (top window)
+            $.jqWindowManager().setCurrentWindow(this);
+
+            /*var currentWindow = $.jqWindowManager().getCurrentWindow();
+
+            if (currentWindow instanceof $.jqWindow && currentWindow != this) {
+                var zIndex = this.window.css('z-index');
+                var currentZIndex = currentWindow.window.css('z-index');
+                this.window.css('z-index', currentZIndex);
+                currentWindow.window.css('z-index', zIndex);
+                $.jqWindowManager().setCurrentWindow(this);
+                
+                if (this.settings.overlayable) {
+                    $.jqWindow.showOverlay($.jqWindow.getWindowZIndexByWindowId(this.id) - 1);
+                } else {
+                    var sortWindowRegistry = $($.jqWindowManager().windows).sort(function(window1, window2) {
+                        return window1.window.css('z-index') < window2.window.css('z-index') ? 1 : window1.window.css('z-index') > window2.window.css('z-index') ? -1 : 0;
+                    });
+                    for (var key in sortWindowRegistry) {
+                        var value = sortWindowRegistry[key];
+                        if (value instanceof $.jqWindow && value.settings.overlayable) {
+                            $.jqWindow.showOverlay($.jqWindow.getWindowZIndexByWindowId(value.getId()) - 1);
+                            break;
+                        }
+                    }
+                }
+            }*/
         },
 
         setContent : function(content)
         {
-            this.content.html('<div class="inner">' + content + '</div>');
+            this.content.html(content);
         },
 
         setTitle : function(title)
@@ -450,17 +638,22 @@ $.extend($.jqWindow, {
             $.jqWindow.hideOverlay();
         },
 
-        getWindowId : function()
+        getId : function()
+        {
+            return this.id;
+        },
+
+        getDomId : function()
         {
             return this.window.attr('id');
+        },
+
+        setZIndex : function(zIndex)
+        {
+            this.zIndex = zIndex;
+            this.window.css('z-index', zIndex);
         }
     },
-/*
-    getWindowId : function()
-    {
-//        return this.window.attr('id');
-    },
-*/
 
     getElementPosition : function(element)
     {
@@ -475,7 +668,8 @@ $.extend($.jqWindow, {
         return {x : left, y : top};
     },
 
-    getBrowserScrollPosition : function() {
+    getBrowserScrollPosition : function()
+    {
         var scrOfX = 0, scrOfY = 0;
         if (typeof( window.pageYOffset ) == 'number') {
             //Netscape compliant
@@ -493,15 +687,15 @@ $.extend($.jqWindow, {
         return {x:scrOfX, y:scrOfY};
     },
 
-    hideBrowserScrollbar : function() {
+    hideBrowserScrollbar : function()
+    {
+        this.bodyOverflowSave = $('body').css('overflow');
         $('body').css('overflow', 'hidden');
     },
 
-    showBrowserScrollbar : function() {
-        /**
-         * @todo Исправить
-         */
-        $('body').css('overflow', 'auto');
+    showBrowserScrollbar : function()
+    {
+        $('body').css('overflow', this.bodyOverflowSave);
     },
 
     /**
@@ -509,25 +703,50 @@ $.extend($.jqWindow, {
      *
      * return {width, height}
      */
-    getBrowserScreenDimensions : function() {
+    getBrowserScreenDimensions : function()
+    {
         var width = document.documentElement.clientWidth,
             height = document.documentElement.clientHeight;
         return {width : width, height : height};
     },
 
-    showOverlay : function(container, jqWindow)
+    recountSizeWindowItems : function(jqWindow)
+    {
+        jqWindow.title.width(jqWindow.header.width() - jqWindow.headerActionBar.width() - 5);
+        var contentHeight = jqWindow.window.height() - jqWindow.header.outerHeight(true) - (jqWindow.content.outerHeight(true) - jqWindow.content.height());
+        //console.log(contentHeight);
+        jqWindow.body.height(contentHeight);
+    },
+
+    getWindowZIndexByWindowId : function(windowId)
+    {
+        return $.jqWindowManager().settings.zIndexStart + windowId * 2;
+    },
+
+    createOverlay : function(container, className)
     {
         if (this.overlay) {
             return;
         }
-        this.hideBrowserScrollbar();
-        this.overlay =  $('<div></div>').addClass(jqWindow.settings.overlayClass)
+        this.overlay =  $('<div></div>').addClass(className)
                                         .appendTo(container)
                                         .width(container.width())
                                         .height(container.height())
                                         .click(function() {
                                             $.jqWindowManager().closeAll();
-                                        });
+                                        })
+                                        .hide();
+    },
+
+    showOverlay : function(zIndex)
+    {
+        if (this.overlay) {
+            if (zIndex) {
+                this.overlay.css('z-index', zIndex);
+            }
+            this.hideBrowserScrollbar();
+            this.overlay.show();
+        }
     },
 
     hideOverlay : function()
@@ -538,7 +757,6 @@ $.extend($.jqWindow, {
             this.overlay = null;
         }
     }
-
 });
 
 
@@ -548,44 +766,67 @@ $.jqWindowManager = function()
 }
 
 $.extend($.jqWindowManager(), {
-    /**
-     * Curent/Focused/Top window)
-     * After change focus we must define new current window
-     * After close window we must securrent  window with highest z-index
-     */
-    currentWindow : null,
+    settings : {
+        zIndexStart : 1000
+    },
 
-    registry : [],
+    windows : [],
+
+    layers : [],
 
     setCurrentWindow : function(jqWindow)
     {
-       this.currentWindow = jqWindow;
-    },
+        jqWindow = this.getWindow(jqWindow);
 
-    setCurrentWindowById : function(windowId)
-    {
-       this.currentWindow = this.getWindowById(windowId);
-    },
-
-    getWindowById : function(windowId)
-    {
-        if (windowId.substring(0, 9) == 'jqwindow_') {
-            windowId = windowId.substring(9, windowId.length);
+        if (jqWindow instanceof $.jqWindow && jqWindow != this.getCurrentWindow()) {
+            if (jqWindow.zIndex) {
+                this.layers.splice(jqWindow.zIndex, 1);
+            }
+            jqWindow.setZIndex((this.layers.length ? this.layers.length : this.settings.zIndexStart) + 2);
+            this.layers[jqWindow.zIndex] = jqWindow;
         }
-
-        return this.registry[windowId];
     },
 
     getCurrentWindow : function()
     {
-       return this.currentWindow;
+        return this.layers[this.layers.length - 1];
+    },
+
+    getCurrentWindowBefore : function()
+    {
+       return this.layers[this.layers.length - 1];
+    },
+
+    getWindow : function(jqWindow)
+    {
+        var windowId = this.getWindowIdFromMixed(jqWindow);
+        return this.windows[windowId];
+    },
+
+    getWindowIdFromMixed : function(windowId)
+    {
+        if (windowId) {
+            if (typeof(windowId) == 'string' && windowId.substring(0, 9) == 'jqwindow_') {
+                windowId = windowId.substring(9, windowId.length);
+            } else if (typeof(windowId) == 'object') {
+                windowId = windowId.getId();
+            }
+        }
+        return windowId;
     },
 
     registryWindow : function(jqWindow)
     {
-        var jqWindowId = this.registry.length;
-        this.registry[jqWindowId] = jqWindow;
-        return jqWindowId;
+        if (jqWindow instanceof $.jqWindow) {
+            jqWindow.id = this.getWindowCount();
+            this.windows[jqWindow.getId()] = jqWindow;
+            /**
+             * new window is always on top (current)
+             */
+            this.setCurrentWindow(jqWindow);
+            return true;
+        }
+        return false;
     },
 
     /**
@@ -595,25 +836,31 @@ $.extend($.jqWindowManager(), {
      */
     getWindowCount : function()
     {
-        return this.registry.length;
+        return this.windows.length;
     },
 
-    removeWindow : function(id)
+    removeWindow : function(jqWindow)
     {
-        this.registry.splice(id, 1);
+        jqWindow = this.getWindow(jqWindow);
+
+        if (jqWindow) {
+            this.windows.splice(jqWindow.getId(), 1);
+            this.layers.splice(jqWindow.zIndex, 1);
+        }
     },
 
-    createWindow : function(name, options)
+    createWindow : function(name, options, parentWindow)
     {
-        return new $.jqWindow(name, options);
+        return new $.jqWindow(name, options, parentWindow);
     },
 
     closeAll : function()
     {
-        for (i = 0; i < this.registry.length; i++) {
-            this.registry[i].close();
+        for (var key in this.windows) {
+            this.windows[key].close();
         }
-    }
+    },
+
 });
 
 })(jQuery)
