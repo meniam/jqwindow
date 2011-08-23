@@ -76,6 +76,7 @@ $.extend($.jqWindow, {
         headerExpandButtonClass                  : 'jqwindow_expand',
         headerFoldingCollapseButtonClass         : 'jqwindow_folding_collapse',
         headerFoldingExpandButtonClass           : 'jqwindow_folding_expand',
+        focusedClass                             : 'jqwindow_focus',
 
         // HOOK defaults 
         onBeforeShow                             : function(jqWindow) { return true; },
@@ -767,12 +768,15 @@ $.jqWindowManager = function()
 
 $.extend($.jqWindowManager(), {
     settings : {
-        zIndexStart : 1000
+        zIndexStart     : 1000,
+        overlayClass    : 'jqwindow_overlay'
     },
 
     windows : [],
 
     layers : [],
+
+    overlayableWindowCount : 0,
 
     setCurrentWindow : function(jqWindow)
     {
@@ -782,19 +786,27 @@ $.extend($.jqWindowManager(), {
             if (jqWindow.zIndex) {
                 this.layers.splice(jqWindow.zIndex, 1);
             }
-            jqWindow.setZIndex((this.layers.length ? this.layers.length : this.settings.zIndexStart) + 2);
+            var windowZIndex = (this.layers.length ? this.layers.length : this.settings.zIndexStart) + 2;
+            jqWindow.setZIndex(windowZIndex);
             this.layers[jqWindow.zIndex] = jqWindow;
         }
     },
 
     getCurrentWindow : function()
     {
-        return this.layers[this.layers.length - 1];
+        if (this.layers.length) {
+            for (var i = this.layers.length; i >= 0; i--) {
+                if (this.layers[i] instanceof $.jqWindow) {
+                    return this.layers[i];
+                }
+            }
+        }
+        return null;
     },
 
     getCurrentWindowBefore : function()
     {
-       return this.layers[this.layers.length - 1];
+       return this.layers[this.layers.length - 2];
     },
 
     getWindow : function(jqWindow)
@@ -818,12 +830,16 @@ $.extend($.jqWindowManager(), {
     registryWindow : function(jqWindow)
     {
         if (jqWindow instanceof $.jqWindow) {
-            jqWindow.id = this.getWindowCount();
+            jqWindow.id = this.windows.length;
             this.windows[jqWindow.getId()] = jqWindow;
             /**
              * new window is always on top (current)
              */
             this.setCurrentWindow(jqWindow);
+            if (jqWindow.settings.overlayable) {
+                this.showOverlay(jqWindow.zIndex - 1);
+                this.overlayableWindowCount++;
+            }
             return true;
         }
         return false;
@@ -844,8 +860,21 @@ $.extend($.jqWindowManager(), {
         jqWindow = this.getWindow(jqWindow);
 
         if (jqWindow) {
-            this.windows.splice(jqWindow.getId(), 1);
-            this.layers.splice(jqWindow.zIndex, 1);
+            this.windows[jqWindow.getId()] = undefined;
+            this.layers[jqWindow.zIndex] = undefined;
+            this.setCurrentWindow(this.getCurrentWindow());
+            if (jqWindow.settings.overlayable) {
+                for (var i = this.getWindowCount(); i >= 0; i--) {
+                    var value = this.windows[i];
+                    if (value instanceof $.jqWindow && value.settings.overlayable) {
+                        this.showOverlay(value.zIndex - 1);
+                    }
+                }
+                this.overlayableWindowCount--;
+                if (!this.overlayableWindowCount) {
+                    this.hideOverlay();
+                }
+            }
         }
     },
 
@@ -860,6 +889,51 @@ $.extend($.jqWindowManager(), {
             this.windows[key].close();
         }
     },
+
+    createOverlay : function(container)
+    {
+        if (this.overlay) {
+            return;
+        }
+        if (!container) {
+            var windowDimensions = $.jqWindow.getBrowserScreenDimensions();
+            var width = windowDimensions.width;
+            var height = windowDimensions.height;
+        } else {
+            var width = $(container).width();
+            var height = $(container).height();
+        }
+        container = container ? $(container) : $('body');
+        this.overlay =  $('<div></div>').addClass(this.settings.overlayClass)
+                                        .appendTo(container)
+                                        .width(width)
+                                        .height(height)
+                                        .bind('click.jqwindow', function() {
+                                            //$.jqWindowManager().closeAll();
+                                        })
+                                        .hide();
+    },
+
+    showOverlay : function(zIndex)
+    {
+        if (!this.overlay) {
+            this.createOverlay();
+        }
+        if (zIndex) {
+            this.overlay.css('z-index', zIndex);
+        }
+        $.jqWindow.hideBrowserScrollbar();
+        this.overlay.show();
+    },
+
+    hideOverlay : function()
+    {
+        if (this.overlay) {
+            $.jqWindow.showBrowserScrollbar();
+            this.overlay.remove();
+            this.overlay = null;
+        }
+    }
 
 });
 

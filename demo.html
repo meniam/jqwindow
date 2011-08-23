@@ -3,6 +3,7 @@
 <html>
 <head>
 	<title>Demo test</title>
+    <meta http-equiv="Content-Type" content="text/html;charset=utf-8">
 	<script type="text/javascript" src="https://ajax.googleapis.com/ajax/libs/jquery/1.5.2/jquery.min.js"></script>
 	<script type="text/javascript" src="jquery.jqwindow.js"></script>
 	<link rel="stylesheet" href="skins/gray/css/screen.css">
@@ -11,6 +12,7 @@
 			w = new $.jqWindow('test', {
 				title : 'Шла Саша по шоссе и сосала соску &copy; Руская народная скороговорка',
 				width : 1000,
+                overlayable : true,
 				onBeforeShow : function() {
 					/*new $.jqWindow('alert', {
 						onAfterCreate : function(jqW) {
@@ -25,6 +27,7 @@
                     new $.jqWindow('test2', {
                         title : 'Дочернее окно',
                         width : '20%',
+                        overlayable : true,
                         onAfterShow : function(jqW) {
                             //jqW.setContent('hi');
                             new $.jqWindow('test3', {
