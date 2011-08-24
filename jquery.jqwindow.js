@@ -29,6 +29,10 @@ $.jqWindow = function(name, options, parentWindow)
 
     if (this.settings.modal) {
         this.settings.overlayable = true;
+        this.settings.minimizable = false;
+        this.settings.maximizable = false;
+        this.settings.draggable = false;
+        this.settings.resizeable = false;
     }
 
     this.init(parentWindow);
@@ -833,7 +837,7 @@ $.extend($.jqWindowManager(), {
     settings : {
         zIndexStart       : 1000,
         overlayClass      : 'jqwindow_overlay',
-        persistentOverlay : true,
+        persistentOverlay : false,
         debugLevel        : 0
     },
 
@@ -1039,14 +1043,16 @@ $.extend($.jqWindowManager(), {
         this.overlay.show();
 
         jqOverlay.unbind('click.jqwindow');
-        jqOverlay.bind('click.jqwindow', function(event) {
-            if (!jqWindow.settings.onBeforeOverlayClick || jqWindow.settings.onBeforeOverlayClick(jqWindow, jqOverlay, event)) {
-                jqWindow.close();
-                if (jqWindow.settings.onAfterOverlayClick) {
-                    jqWindow.settings.onAfterOverlayClick(jqWindow, jqOverlay, event);
+        if (!jqWindow.settings.modal) {
+            jqOverlay.bind('click.jqwindow', function(event) {
+                if (!jqWindow.settings.onBeforeOverlayClick || jqWindow.settings.onBeforeOverlayClick(jqWindow, jqOverlay, event)) {
+                    jqWindow.close();
+                    if (jqWindow.settings.onAfterOverlayClick) {
+                        jqWindow.settings.onAfterOverlayClick(jqWindow, jqOverlay, event);
+                    }
                 }
-            }
-        });
+            });
+        }
     },
 
     hideOverlay : function()

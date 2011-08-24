@@ -28,14 +28,21 @@
                     new $.jqWindow('test2', {
                         title : 'Дочернее окно',
                         width : '20%',
+                        left : 100,
+                        top : 300,
                         //overlayable : true,
                         onAfterShow : function(jqW) {
                             //jqW.setContent('hi');
                             new $.jqWindow('test3', {
                                 title : '1',
+                                height : 300,
                                 width : '10%',
+                                top : 300,
+                                left : 900,
+                                modal : true,
                                 onBeforeClose : function(jqW) {
-                                    return jqW.closeParent(2);
+                                    //return jqW.closeParent(2);
+                                    return true;
                                 }
                             }, jqW).show();
                         }
