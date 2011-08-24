@@ -12,7 +12,7 @@
 			w = new $.jqWindow('test', {
 				title : 'Шла Саша по шоссе и сосала соску &copy; Руская народная скороговорка',
 				width : 1000,
-                overlayable : true,
+                //overlayable : true,
 				onBeforeShow : function() {
 					/*new $.jqWindow('alert', {
 						onAfterCreate : function(jqW) {
@@ -20,6 +20,7 @@
 							return true;
 						}
 					}).show();*/
+
 					return true;
 				},
 				onAfterShow : function(jqW) {
@@ -27,7 +28,7 @@
                     new $.jqWindow('test2', {
                         title : 'Дочернее окно',
                         width : '20%',
-                        overlayable : true,
+                        //overlayable : true,
                         onAfterShow : function(jqW) {
                             //jqW.setContent('hi');
                             new $.jqWindow('test3', {

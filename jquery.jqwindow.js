@@ -31,9 +31,18 @@ $.jqWindow = function(name, options, parentWindow)
     this.init(parentWindow);
 };
 
+/**
+ * Debug Levels
+ *      5 - hook run messages
+ *          
+ *      6 - hook run params
+ *
+ */
+
 $.extend($.jqWindow, {
     defaults : {
         type                     : 'jqwindow_normal jqwindow_padded', // window type [jqwindow_normal, jqwindow_basic, jqwindow_shadow, jqwindow_framed, jqwindow_masked, jqwindow_padded_basic, jqwindow_padded]
+        debug                    : true,
         title                    : '&nbsp;',
         footerContent            : '',
         container                : null,
@@ -43,9 +52,8 @@ $.extend($.jqWindow, {
         minHeight                : 100,
         maxWidth                 : 0,
         maxHeight                : 0,
-        posX                     : -1,
-        posY                     : -1,
-        posZ                     : 1000,
+        left                     : -1,
+        top                      : -1,
         scrollable               : true,
         closeable                : true,
         minimizable              : true,
@@ -56,6 +64,10 @@ $.extend($.jqWindow, {
         modal                    : false,
         minimizeArea             : 'left',
         minimizeMaxPerLine       : 5, //Количество минимизированных окон в одной строке
+        possiblySpadeNorth       : false, // Possible for the spade north container (or window) when dragg
+        possiblySpadeEast        : false, // Possible for the spade east container (or window) when dragg
+        possiblySpadeSouth       : false, // Possible for the spade south container (or window) when dragg
+        possiblySpadeWest        : false, // Possible for the spade west container (or window) when dragg
 
         // css classes 
         windowClass                              : 'jqwindow',
@@ -78,13 +90,20 @@ $.extend($.jqWindow, {
         headerFoldingExpandButtonClass           : 'jqwindow_folding_expand',
         focusedClass                             : 'jqwindow_focus',
 
-        // HOOK defaults 
+        /* debug start */
+        // HOOK defaults
         onBeforeShow                             : function(jqWindow) { return true; },
         onAfterShow                              : function(jqWindow) { return true; },
         onBeforeCreate                           : function()         { return true; },
         onAfterCreate                            : function(jqWindow) { return true; },
         onBeforeClose                            : function(jqWindow) { return true; },
-        onAfterClose                             : function()         { return true; }
+        onAfterClose                             : function()         { return true; },
+        onBeforeOverlayClick                     : function(jqWindow, overlay, event)         { return true; },
+        onAfterOverlayClick                      : function(jqWindow, overlay, event)         { return true; },
+        onBeforeResize                           : function(jqWindow, event, currentSizeAndPos) { return true; },
+        onResize                                 : function(jqWindow, event, currentSizeAndPos, originalSizeAndPos) { return true; },
+        onAfterResize                            : function(jqWindow, event, currentSizeAndPos, originalSizeAndPos) { return true; },
+        /* debug end */
     },
 
     prototype : {
@@ -94,10 +113,16 @@ $.extend($.jqWindow, {
          */
         init : function(parentWindow)
         {
+            if (this.settings.onBeforeShow() == this) {
+                alert(true);
+            }
+            if (this.settings.onBeforeShow != this.settings.onAfterClose) {
+                //alert(true);
+            }
             if (this.create()) {
                 this.setParent(parentWindow);
                 if (!this.parent) {
-                    this.setParent($.jqWindowManager().getCurrentWindow());
+                    this.setParent($.jqWindowManager().getFocusedWindow());
                 }
                 if ($.jqWindowManager().registryWindow(this)) {
                     this.window.attr('id', 'jqwindow_' + this.getId());
@@ -200,53 +225,17 @@ $.extend($.jqWindow, {
             var jqWindow = this;
             var windowContainer = this.container ? this.container : $('body');
 
-            if (this.settings.overlayable) {
+            /*if (this.settings.overlayable) {
                 $.jqWindow.createOverlay(windowContainer, this.settings.overlayClass);
-            }
-
-            // Calculate window width and height
-            var windowWidth = this.settings.width;
-            if (windowWidth[windowWidth.length - 1] == '%') {
-                windowWidth = (parseInt(windowWidth.substr(0, windowWidth.length - 1)) * $(window).width() / 100);
-            }
-
-            var windowHeight = this.settings.height;
-            if (windowHeight[windowHeight.length - 1] == '%') {
-                windowHeight = (parseInt(windowHeight.substr(0, windowHeight.length - 1)) * $(window).height() / 100);
-            }
-
-            windowWidth = (this.settings.minWidth > 0 && windowWidth < this.settings.minWidth) ? this.settings.minWidth : ((this.settings.maxWidth > 0 && windowWidth > this.settings.maxWidth) ? this.settings.maxWidth : windowWidth);
-            windowHeight = (this.settings.minHeight > 0 && windowHeight < this.settings.minHeight) ? this.settings.minHeight : ((this.settings.maxHeight > 0 && windowHeight > this.settings.maxHeight) ? this.settings.maxHeight : windowHeight);
+            }*/
 
             // create common DOM-structure
             this.window = $('<div></div>').addClass(this.settings.windowClass)
                                           .addClass(this.settings.type)
                                           .attr('name', this.name)
-                                          .width(windowWidth)
-                                          .height(windowHeight)
                                           .appendTo(windowContainer);
 
-            // calculate and set position of window
-            var containerPos = $.jqWindow.getElementPosition(this.container);
-            var scrollPos = $.jqWindow.getBrowserScrollPosition();
-
-            var windowPosX = containerPos.x + (this.settings.posX >= 0)
-                                ? this.settings.posX
-                                : ($(this.container ? this.container : window).width() - this.window.width()) / 2;
-
-            var windowPosY = containerPos.y + (this.settings.posY >= 0)
-                                ? this.settings.posY
-                                : ($(this.container ? this.container : window).height() - this.window.height()) / 2;
-
-            if (!this.container) {
-                windowPosX += scrollPos.x;
-                windowPosY += scrollPos.y;
-            }
-
-            this.window.css({
-                left    : windowPosX,
-                top     : windowPosY
-            });
+            $.jqWindow.recountWindowSizeAndPosition(this);
 
             // Scrollable setting just add scrollableClass
             // to main DOM element of window
@@ -371,11 +360,19 @@ $.extend($.jqWindow, {
                                       width  : '3px',
                                       height : this.window.height()})
                                 .bind('mousedown.jqwindow_resize', function(event) {
-                                    jqWindow.window.addClass('resize');
-                                    $(window).bind('mousemove.jqwindow_resize', function(event) {
-                                        jqWindow.resize(event, 'east');
-                                        event.preventDefault();
-                                    });
+                                    if (!jqWindow.maximized
+                                        && (!jqWindow.settings.onBeforeResize
+                                            || jqWindow.settings.onBeforeResize(jqWindow, event, jqWindow.getCurrentSizeAndPos()))
+                                    ) {
+                                        jqWindow.window.addClass('resize');
+                                        jqWindow.originalSizeAndPos = jqWindow.getCurrentSizeAndPos();
+                                        $(window).bind('mousemove.jqwindow_resize', function(event) {
+                                            if (jqWindow.settings.onResize(jqWindow, event, jqWindow.getCurrentSizeAndPos(), jqWindow.originalSizeAndPos)) {
+                                                jqWindow.resize(event, 'east');
+                                            }
+                                            event.preventDefault();
+                                        });
+                                    }
                                     event.preventDefault();
                                 })
                                 .appendTo(this.window);
@@ -386,11 +383,19 @@ $.extend($.jqWindow, {
                                       width  : this.window.width(),
                                       height : '5px'})
                                 .bind('mousedown.jqwindow_resize', function(event) {
-                                    jqWindow.window.addClass('resize');
-                                    $(window).bind('mousemove.jqwindow_resize', function(event) {
-                                        jqWindow.resize(event, 'south');
-                                        event.preventDefault();
-                                    });
+                                    if (!jqWindow.maximized
+                                        && (!jqWindow.settings.onBeforeResize
+                                            || jqWindow.settings.onBeforeResize(jqWindow, event, jqWindow.getCurrentSizeAndPos()))
+                                    ) {
+                                        jqWindow.window.addClass('resize');
+                                        jqWindow.originalSizeAndPos = jqWindow.getCurrentSizeAndPos();
+                                        $(window).bind('mousemove.jqwindow_resize', function(event) {
+                                            if (jqWindow.settings.onResize(jqWindow, event, jqWindow.getCurrentSizeAndPos(), jqWindow.originalSizeAndPos)) {
+                                                jqWindow.resize(event, 'south');
+                                            }
+                                            event.preventDefault();
+                                        });
+                                    }
                                     event.preventDefault();
                                 })
                                 .appendTo(this.window);
@@ -401,17 +406,39 @@ $.extend($.jqWindow, {
                                       height : '5px',
                                       cursor : 'se-resize'})
                                 .bind('mousedown.jqwindow_resize', function(event) {
-                                    jqWindow.window.addClass('resize');
-                                    $(window).bind('mousemove.jqwindow_resize', function(event) {
-                                        jqWindow.resize(event, 'south-east');
-                                        event.preventDefault();
-                                    });
+                                    if (!jqWindow.maximized
+                                        && (!jqWindow.settings.onBeforeResize
+                                            || jqWindow.settings.onBeforeResize(jqWindow, event, jqWindow.getCurrentSizeAndPos()))
+                                    ) {
+                                        jqWindow.window.addClass('resize');
+                                        jqWindow.originalSizeAndPos = jqWindow.getCurrentSizeAndPos();
+                                        $(window).bind('mousemove.jqwindow_resize', function(event) {
+                                            if (jqWindow.settings.onResize(jqWindow, event, jqWindow.getCurrentSizeAndPos(), jqWindow.originalSizeAndPos)) {
+                                                jqWindow.resize(event, 'south-east');
+                                            }
+                                            event.preventDefault();
+                                        });
+                                    }
                                     event.preventDefault();
                                 })
                                 .appendTo(this.window);
                 $(window).bind('mouseup.jqwindow_resize', function(event) {
-                    jqWindow.window.removeClass('resize');
-                    $(window).unbind('mousemove.jqwindow_resize');
+                    if (jqWindow.maximized) {
+                        return;
+                    }
+;;;                 if (jqWindow.settings.debug) {
+;;;                     $.jqWindowManager().log("onAfrterResize: '" + jqWindow.getName() + "' #" + jqWindow.getId() , 5);
+;;;                     $.jqWindowManager().log("onAfterResize param currentSizeAndPos:", 6);
+;;;                     $.jqWindowManager().log(jqWindow.getCurrentSizeAndPos(), 6);
+;;;                     $.jqWindowManager().log("onAfterResize param originalSizeAndPos:", 6);
+;;;                     $.jqWindowManager().log(jqWindow.originalSizeAndPos, 6);
+;;;                 }
+
+                    if (jqWindow.settings.onAfterResize(jqWindow, event, jqWindow.getCurrentSizeAndPos(), jqWindow.originalSizeAndPos)) {
+                        jqWindow.window.removeClass('resize');
+                        $(window).unbind('mousemove.jqwindow_resize');
+                        delete jqWindow.originalSizeAndPos;
+                    }
                 });
             }
 
@@ -430,9 +457,6 @@ $.extend($.jqWindow, {
         show : function()
         {
             if (this.settings.onBeforeShow(this)) {
-                /*if (this.settings.overlayable) {
-                    $.jqWindow.showOverlay(this.window.css('z-index') - 1);
-                }*/
                 this.window.show();
                 this.settings.onAfterShow(this);
             }
@@ -469,10 +493,6 @@ $.extend($.jqWindow, {
                     })
                 }
 
-                /*if (!$.jqWindowManager().getWindowCount()) {
-                    $.jqWindow.hideOverlay();
-                }*/
-
                 this.settings.onAfterClose();
             }
             return true;
@@ -491,26 +511,39 @@ $.extend($.jqWindow, {
                 posY = event.pageY - mousePos.y;
 
             // We allow drag window only within its territories (container)
-            if (this.container) {
-                var minX = this.container.offset().left;
-                var minY = this.container.offset().top;
-                var maxX = this.container.offset().left + this.container.width() - this.window.outerWidth(true);
-                var maxY = this.container.offset().top + this.container.height() - this.window.outerHeight(true);
-            } else {
+            if (!this.container) {
                 // If container not defined we can drag window in within screen (browser window)
                 var screenDimensions = $.jqWindow.getBrowserScreenDimensions();
                 var scrollPosition = $.jqWindow.getBrowserScrollPosition();
-                var minX = scrollPosition.x;
-                var maxX = scrollPosition.x + screenDimensions.width - this.window.outerWidth(true);
-                var minY = scrollPosition.y;
-                var maxY = scrollPosition.y + screenDimensions.height - this.window.outerHeight(true);
+            }
+            if (!this.settings.possiblySpadeWest) {
+                var minX = this.container ? this.container.offset().left : scrollPosition.x;
+            } else {
+                var minX = -1;
+            }
+            if (!this.settings.possiblySpadeNorth) {
+                var minY = this.container ? this.container.offset().top : scrollPosition.y;
+            } else {
+                var minY = -1;
+            }
+            if (!this.settings.possiblySpadeEast) {
+                var maxX = this.container ? this.container.offset().left + this.container.width() - this.window.outerWidth(true)
+                                          : scrollPosition.x + screenDimensions.width - this.window.outerWidth(true);
+            } else {
+                var maxX = -1;
+            }
+            if (!this.settings.possiblySpadeSouth) {
+                var maxY = this.container ? this.container.offset().top + this.container.height() - this.window.outerHeight(true)
+                        : scrollPosition.y + screenDimensions.height - this.window.outerHeight(true);
+            } else {
+                var maxY = -1;
             }
 
-            posX = posX <= minX ? minX : (posX >= maxX ? maxX : posX);
-            posY = posY <= minY ? minY : (posY >= maxY ? maxY : posY);
+            posX = (minX >= 0 && posX <= minX) ? minX : ((maxX >= 0 && posX >= maxX) ? maxX : posX);
+            posY = (minY >= 0 && posY <= minY) ? minY : ((maxY >= 0 && posY >= maxY) ? maxY : posY);
 
             this.window.css({
-                top     : posY,
+                top  : posY,
                 left : posX
             });
         },
@@ -540,37 +573,15 @@ $.extend($.jqWindow, {
 
         maximize : function()
         {
-            if (!this.container) {
-                $.jqWindow.hideBrowserScrollbar();
-                var newDimensions = $.jqWindow.getBrowserScreenDimensions();
-                var newPos = $.jqWindow.getBrowserScrollPosition();
-            } else {
-                var newDimensions = {width  : this.container.width(),
-                                     height : this.container.height()};
-                var newPos = {x : this.container.offset().left,
-                              y : this.container.offset().top};
-            }
+;;;         if (this.settings.debug) {
+;;;             $.jqWindowManager().log("onBeforeMaximize: '" + this.getName() + "' #" + this.getId() , 5);
+;;;         }
 
-            this.windowSaveParams = {width  : this.window.width(),
-                                     height : this.window.height(),
-                                     x      : this.window.offset().left,
-                                     y      : this.window.offset().top}
-
-            this.window.css({
-                width    : newDimensions.width,
-                height   : newDimensions.height,
-                top      : newPos.y,
-                left     : newPos.x
-            });
-
-            this.headerActionBar.children('.' + this.settings.headerMaximizeButtonClass).hide();
-            this.headerActionBar.children('.' + this.settings.headerMinimizeButtonClass).show();
-            this.maximized = true;
-            
-            $.jqWindow.recountSizeWindowItems(this);
+            $.jqWindow.maximize(this);
         },
 
-        minimize : function() {
+        minimize : function()
+        {
             if (!this.container) {
                 $.jqWindow.showBrowserScrollbar();
             }
@@ -596,32 +607,7 @@ $.extend($.jqWindow, {
         focus : function()
         {
             // Current window (top window)
-            $.jqWindowManager().setCurrentWindow(this);
-
-            /*var currentWindow = $.jqWindowManager().getCurrentWindow();
-
-            if (currentWindow instanceof $.jqWindow && currentWindow != this) {
-                var zIndex = this.window.css('z-index');
-                var currentZIndex = currentWindow.window.css('z-index');
-                this.window.css('z-index', currentZIndex);
-                currentWindow.window.css('z-index', zIndex);
-                $.jqWindowManager().setCurrentWindow(this);
-                
-                if (this.settings.overlayable) {
-                    $.jqWindow.showOverlay($.jqWindow.getWindowZIndexByWindowId(this.id) - 1);
-                } else {
-                    var sortWindowRegistry = $($.jqWindowManager().windows).sort(function(window1, window2) {
-                        return window1.window.css('z-index') < window2.window.css('z-index') ? 1 : window1.window.css('z-index') > window2.window.css('z-index') ? -1 : 0;
-                    });
-                    for (var key in sortWindowRegistry) {
-                        var value = sortWindowRegistry[key];
-                        if (value instanceof $.jqWindow && value.settings.overlayable) {
-                            $.jqWindow.showOverlay($.jqWindow.getWindowZIndexByWindowId(value.getId()) - 1);
-                            break;
-                        }
-                    }
-                }
-            }*/
+            $.jqWindowManager().focusWindow(this);
         },
 
         setContent : function(content)
@@ -639,6 +625,11 @@ $.extend($.jqWindow, {
             $.jqWindow.hideOverlay();
         },
 
+        getName : function()
+        {
+            return this.name;
+        },
+
         getId : function()
         {
             return this.id;
@@ -649,10 +640,18 @@ $.extend($.jqWindow, {
             return this.window.attr('id');
         },
 
-        setZIndex : function(zIndex)
+        setZindex : function(zIndex)
         {
             this.zIndex = zIndex;
             this.window.css('z-index', zIndex);
+        },
+
+        getCurrentSizeAndPos : function()
+        {
+            return {width  : this.window.width(),
+                    height : this.window.height(),
+                    top    : this.window.offset().top,
+                    left   : this.window.offset().left};
         }
     },
 
@@ -717,7 +716,110 @@ $.extend($.jqWindow, {
         var contentHeight = jqWindow.window.height() - jqWindow.header.outerHeight(true) - (jqWindow.content.outerHeight(true) - jqWindow.content.height());
         //console.log(contentHeight);
         jqWindow.body.height(contentHeight);
+
+        return this;
     },
+
+    recountWindowSizeAndPosition : function(jqWindow)
+    {
+;;;     if (jqWindow.settings.debug) {
+;;;         $.jqWindowManager().log("recountWindowSizeAndPosition: '" + jqWindow.getName() + "' #" + jqWindow.getId() , 5);
+;;;     }
+
+        if (jqWindow.settings.onBeforeResize && !jqWindow.settings.onBeforeResize(jqWindow, window.event, jqWindow.getCurrentSizeAndPos())) {
+;;;         if (jqWindow.settings.debug) {
+;;;             $.jqWindowManager().log("onBeforeResize: hook return false", 5);
+;;;         }
+            return this;
+        }
+
+        if (jqWindow.maximized) {
+;;;         if (jqWindow.settings.debug) {
+;;;             $.jqWindowManager().log("recountWindowSizeAndPosition: window is maximized", 5);
+;;;         }
+            this.maximize(jqWindow);
+            return this;
+        }
+        jqWindow.originalSizeAndPos = jqWindow.getCurrentSizeAndPos();
+
+        // Calculate window width and height
+        var windowWidth = jqWindow.settings.width;
+        if (windowWidth[windowWidth.length - 1] == '%') {
+            windowWidth = (parseInt(windowWidth.substr(0, windowWidth.length - 1)) * $(window).width() / 100);
+        }
+
+        var windowHeight = jqWindow.settings.height;
+        if (windowHeight[windowHeight.length - 1] == '%') {
+            windowHeight = (parseInt(windowHeight.substr(0, windowHeight.length - 1)) * $(window).height() / 100);
+        }
+
+        /**
+         * @todo Change to "if" construction
+         */
+        windowWidth = (jqWindow.settings.minWidth > 0 && windowWidth < jqWindow.settings.minWidth) ? jqWindow.settings.minWidth : ((jqWindow.settings.maxWidth > 0 && windowWidth > jqWindow.settings.maxWidth) ? jqWindow.settings.maxWidth : windowWidth);
+        windowHeight = (jqWindow.settings.minHeight > 0 && windowHeight < jqWindow.settings.minHeight) ? jqWindow.settings.minHeight : ((jqWindow.settings.maxHeight > 0 && windowHeight > jqWindow.settings.maxHeight) ? jqWindow.settings.maxHeight : windowHeight);
+
+        // calculate and set position of window
+        var containerPos = this.getElementPosition(jqWindow.container);
+        var scrollPos = this.getBrowserScrollPosition();
+
+        var windowPosX = containerPos.x + (jqWindow.settings.left >= 0)
+                                ? jqWindow.settings.left
+                                : ($(jqWindow.container ? jqWindow.container : $(window)).width() - windowWidth) / 2;
+
+        var windowPosY = containerPos.y + (jqWindow.settings.top >= 0)
+                            ? jqWindow.settings.top
+                            : ($(jqWindow.container ? jqWindow.container : $(window)).height() - windowHeight) / 2;
+
+        if (!jqWindow.container) {
+            windowPosX += scrollPos.x;
+            windowPosY += scrollPos.y;
+        }
+
+        jqWindow.window.css({
+            left    : windowPosX,
+            top     : windowPosY
+        }).width(windowWidth).height(windowHeight);
+
+        if (jqWindow.settings.onAfterResize) {
+            jqWindow.settings.onAfterResize(jqWindow, window.event, jqWindow.getCurrentSizeAndPos(), jqWindow.originalSizeAndPos);
+            delete jqWindow.originalSizeAndPos;
+        }
+        return this;
+    },
+
+    maximize : function(jqWindow)
+    {
+        if (!jqWindow.container) {
+            this.hideBrowserScrollbar();
+            var newDimensions = this.getBrowserScreenDimensions();
+            var newPos = this.getBrowserScrollPosition();
+        } else {
+            var newDimensions = {width  : jqWindow.container.width(),
+                                 height : jqWindow.container.height()};
+            var newPos = {x : jqWindow.container.offset().left,
+                          y : jqWindow.container.offset().top};
+        }
+
+        jqWindow.windowSaveParams = {width  : jqWindow.window.width(),
+                                 height : jqWindow.window.height(),
+                                 x      : jqWindow.window.offset().left,
+                                 y      : jqWindow.window.offset().top}
+
+        jqWindow.window.css({
+            width    : newDimensions.width,
+            height   : newDimensions.height,
+            top      : newPos.y,
+            left     : newPos.x
+        });
+
+        jqWindow.headerActionBar.children('.' + jqWindow.settings.headerMaximizeButtonClass).hide();
+        jqWindow.headerActionBar.children('.' + jqWindow.settings.headerMinimizeButtonClass).show();
+        jqWindow.maximized = true;
+
+        this.recountSizeWindowItems(jqWindow);
+    },
+
 
     getWindowZIndexByWindowId : function(windowId)
     {
@@ -758,6 +860,7 @@ $.extend($.jqWindow, {
             this.overlay = null;
         }
     }
+
 });
 
 
@@ -769,7 +872,9 @@ $.jqWindowManager = function()
 $.extend($.jqWindowManager(), {
     settings : {
         zIndexStart     : 1000,
-        overlayClass    : 'jqwindow_overlay'
+        overlayClass    : 'jqwindow_overlay',
+        persistentOverlay : true,
+        debugLevel      : 9
     },
 
     windows : [],
@@ -778,21 +883,21 @@ $.extend($.jqWindowManager(), {
 
     overlayableWindowCount : 0,
 
-    setCurrentWindow : function(jqWindow)
+    focusWindow : function(jqWindow)
     {
         jqWindow = this.getWindow(jqWindow);
 
-        if (jqWindow instanceof $.jqWindow && jqWindow != this.getCurrentWindow()) {
+        if (jqWindow instanceof $.jqWindow && jqWindow != this.getFocusedWindow()) {
             if (jqWindow.zIndex) {
                 this.layers.splice(jqWindow.zIndex, 1);
             }
             var windowZIndex = (this.layers.length ? this.layers.length : this.settings.zIndexStart) + 2;
-            jqWindow.setZIndex(windowZIndex);
+            jqWindow.setZindex(windowZIndex);
             this.layers[jqWindow.zIndex] = jqWindow;
         }
     },
 
-    getCurrentWindow : function()
+    getFocusedWindow : function()
     {
         if (this.layers.length) {
             for (var i = this.layers.length; i >= 0; i--) {
@@ -804,15 +909,15 @@ $.extend($.jqWindowManager(), {
         return null;
     },
 
-    getCurrentWindowBefore : function()
-    {
-       return this.layers[this.layers.length - 2];
-    },
-
     getWindow : function(jqWindow)
     {
         var windowId = this.getWindowIdFromMixed(jqWindow);
-        return this.windows[windowId];
+        for (var key in this.windows) {
+            if (this.windows[key].getId() == windowId) {
+                return this.windows[key];
+            }
+        }
+        return null;
     },
 
     getWindowIdFromMixed : function(windowId)
@@ -830,19 +935,61 @@ $.extend($.jqWindowManager(), {
     registryWindow : function(jqWindow)
     {
         if (jqWindow instanceof $.jqWindow) {
-            jqWindow.id = this.windows.length;
-            this.windows[jqWindow.getId()] = jqWindow;
+            jqWindow.id = this.getWindowCount() + 1;
+            this.windows.push(jqWindow);
+
+            $(window).bind('resize.jqwindow_' + jqWindow.id, function(event) {
+                $.jqWindow.recountWindowSizeAndPosition(jqWindow).recountSizeWindowItems(jqWindow);
+            });
             /**
              * new window is always on top (current)
              */
-            this.setCurrentWindow(jqWindow);
+            this.focusWindow(jqWindow);
             if (jqWindow.settings.overlayable) {
-                this.showOverlay(jqWindow.zIndex - 1);
                 this.overlayableWindowCount++;
+            }
+            if (this.overlayableWindowCount || (this.settings.persistentOverlay && this.getWindowCount() == 1)) {
+                this.showOverlay(jqWindow.zIndex - 1);
             }
             return true;
         }
         return false;
+    },
+
+    removeWindow : function(jqWindow)
+    {
+        jqWindow = this.getWindow(jqWindow);
+
+        if (jqWindow) {
+            for (var key in this.windows) {
+                if (this.windows[key].getId() == jqWindow.getId()) {
+                    this.windows.splice(key, 1);
+                }
+            }
+            $(window).unbind('resize.jqwindow_' + jqWindow.getId());
+
+            //this.windows[jqWindow.getId()] = undefined;
+            this.layers[jqWindow.zIndex] = undefined;
+            this.focusWindow(this.getFocusedWindow());
+            if (jqWindow.settings.overlayable) {
+                for (var i = this.getWindowCount(); i >= 0; i--) {
+                    var value = this.windows[i];
+                    if (value instanceof $.jqWindow && value.settings.overlayable) {
+                        this.showOverlay(value.zIndex - 1);
+                    }
+                }
+                this.overlayableWindowCount--;
+            }
+            console.log(this.overlayableWindowCount);
+            if (!this.overlayableWindowCount || (this.settings.persistentOverlay && !this.getWindowCount())) {
+                this.hideOverlay();
+            }
+        }
+    },
+
+    createWindow : function(name, options, parentWindow)
+    {
+        return new $.jqWindow(name, options, parentWindow);
     },
 
     /**
@@ -853,34 +1000,6 @@ $.extend($.jqWindowManager(), {
     getWindowCount : function()
     {
         return this.windows.length;
-    },
-
-    removeWindow : function(jqWindow)
-    {
-        jqWindow = this.getWindow(jqWindow);
-
-        if (jqWindow) {
-            this.windows[jqWindow.getId()] = undefined;
-            this.layers[jqWindow.zIndex] = undefined;
-            this.setCurrentWindow(this.getCurrentWindow());
-            if (jqWindow.settings.overlayable) {
-                for (var i = this.getWindowCount(); i >= 0; i--) {
-                    var value = this.windows[i];
-                    if (value instanceof $.jqWindow && value.settings.overlayable) {
-                        this.showOverlay(value.zIndex - 1);
-                    }
-                }
-                this.overlayableWindowCount--;
-                if (!this.overlayableWindowCount) {
-                    this.hideOverlay();
-                }
-            }
-        }
-    },
-
-    createWindow : function(name, options, parentWindow)
-    {
-        return new $.jqWindow(name, options, parentWindow);
     },
 
     closeAll : function()
@@ -908,7 +1027,7 @@ $.extend($.jqWindowManager(), {
                                         .appendTo(container)
                                         .width(width)
                                         .height(height)
-                                        .bind('click.jqwindow', function() {
+                                        .bind('mousedown.jqwindow', function() {
                                             //$.jqWindowManager().closeAll();
                                         })
                                         .hide();
@@ -933,6 +1052,16 @@ $.extend($.jqWindowManager(), {
             this.overlay.remove();
             this.overlay = null;
         }
+    },
+
+    log : function(message, level)
+    {
+;;;     if (!level) {
+;;;         level = 1;
+;;;     }
+;;;     if (this.settings.debugLevel > level) {
+;;;         console.log(message);
+;;;     }
     }
 
 });
