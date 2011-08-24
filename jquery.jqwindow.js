@@ -837,7 +837,7 @@ $.extend($.jqWindowManager(), {
     settings : {
         zIndexStart       : 1000,
         overlayClass      : 'jqwindow_overlay',
-        persistentOverlay : false,
+        persistentOverlay : true,
         debugLevel        : 0
     },
 
@@ -927,6 +927,9 @@ $.extend($.jqWindowManager(), {
                         this.showOverlay(this.windows[i]);
                         break;
                     }
+                    if (this.settings.persistentOverlay && !i) {
+                        this.showOverlay(this.windows[i]);
+                    }
                 }
                 this.overlayableWindowCount--;
             }
@@ -1015,6 +1018,16 @@ $.extend($.jqWindowManager(), {
         }
         var jqOverlay = this.overlay;
 
+        if (jqOverlay.jqWindow) {
+            (jqOverlay.jqWindow.container ? jqOverlay.jqWindow.container : $(window)).unbind('resize.jqwindow_resize_overlay');
+        }
+
+        jqOverlay.jqWindow = jqWindow;
+
+        (jqOverlay.jqWindow.container ? jqOverlay.jqWindow.container : $(window)).bind('resize.jqwindow_resize_overlay', function() {
+                                                                                    $.jqWindowManager().resizeOverlay();
+                                                                                 });
+
         if (jqWindow.settings.modal) {
             jqOverlay.addClass(jqWindow.settings.modalOverlayClass);
         } else {
@@ -1022,6 +1035,27 @@ $.extend($.jqWindowManager(), {
         }
 
         jqOverlay.css('z-index', jqWindow.zIndex - 1);
+
+        this.resizeOverlay();
+
+        this.overlay.show();
+
+        jqOverlay.unbind('click.jqwindow');
+        if (!jqWindow.settings.modal && jqWindow.settings.overlayable) {
+            jqOverlay.bind('click.jqwindow', function(event) {
+                if (!jqWindow.settings.onBeforeOverlayClick || jqWindow.settings.onBeforeOverlayClick(jqWindow, jqOverlay, event)) {
+                    jqWindow.close();
+                    if (jqWindow.settings.onAfterOverlayClick) {
+                        jqWindow.settings.onAfterOverlayClick(jqWindow, jqOverlay, event);
+                    }
+                }
+            });
+        }
+    },
+
+    resizeOverlay : function()
+    {
+        var jqWindow = this.overlay.jqWindow;
 
         if (!jqWindow.container) {
             var windowDimensions = $.jqWindow.getBrowserScreenDimensions();
@@ -1039,20 +1073,6 @@ $.extend($.jqWindowManager(), {
             top     : top,
             left    : left
         });
-
-        this.overlay.show();
-
-        jqOverlay.unbind('click.jqwindow');
-        if (!jqWindow.settings.modal) {
-            jqOverlay.bind('click.jqwindow', function(event) {
-                if (!jqWindow.settings.onBeforeOverlayClick || jqWindow.settings.onBeforeOverlayClick(jqWindow, jqOverlay, event)) {
-                    jqWindow.close();
-                    if (jqWindow.settings.onAfterOverlayClick) {
-                        jqWindow.settings.onAfterOverlayClick(jqWindow, jqOverlay, event);
-                    }
-                }
-            });
-        }
     },
 
     hideOverlay : function()
