@@ -9,13 +9,11 @@
 	<link rel="stylesheet" href="skins/gray/css/screen.css">
 	<script type="text/javascript">
 		$(document).ready(function() {
-            $.jqWindowManager({}).getWindow('1');
-            $.jqWindowManager({}).getWindow('3');
-$.jqWindowManager({}).getWindow('3');
+            $.jqWindowManager({persistentOverlay : false});
 			w = new $.jqWindow('test', {
 				title : 'Шла Саша по шоссе и сосала соску &copy; Руская народная скороговорка',
 				width : 1000,
-                //overlayable : true,
+                overlayable : true,
 				onBeforeShow : function() {
 					/*new $.jqWindow('alert', {
 						onAfterCreate : function(jqW) {
@@ -42,7 +40,7 @@ $.jqWindowManager({}).getWindow('3');
                                 width : '10%',
                                 top : 300,
                                 left : 900,
-                                modal : true,
+                                //modal : true,
                                 onBeforeClose : function(jqW) {
                                     //return jqW.closeParent(2);
                                     return true;

@@ -842,7 +842,7 @@ $.extend(jqWindowManager, {
     settings : {
         zIndexStart       : 1000,
         overlayClass      : 'jqwindow_overlay',
-        persistentOverlay : true,
+        persistentOverlay : false,
         debugLevel        : 0
     },
     windows : [],
