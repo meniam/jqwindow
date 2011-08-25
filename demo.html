@@ -9,6 +9,22 @@
 	<link rel="stylesheet" href="skins/gray/css/screen.css">
 	<script type="text/javascript">
 		$(document).ready(function() {
+            var a = '';
+
+            new $.jqWindow('test', {
+                type : 'modal',
+				title : 'Шла Саша по шоссе и сосала соску &copy; Руская народная скороговорка',
+                onAfterClose: function (result) {
+                    alert(result);
+                }
+            }).show();
+
+            $.jqWindow.confirm('kjfalkjl', {
+                onAfterClose: function (result) { alert(result)
+                }
+            });
+
+
             $.jqWindowManager({persistentOverlay : false});
 			w = new $.jqWindow('test', {
 				title : 'Шла Саша по шоссе и сосала соску &copy; Руская народная скороговорка',
@@ -24,6 +40,10 @@
 
 					return true;
 				},
+                onBeforeOverlayClick : function() {
+                    alert(1);
+                    return false;
+                },
 				onAfterShow : function(jqW) {
 					jqW.setContent('Test test');
                     new $.jqWindow('test2', {
@@ -40,7 +60,8 @@
                                 width : '10%',
                                 top : 300,
                                 left : 900,
-                                //modal : true,
+                                modal : true,
+                                allowSpadeNorth : true,
                                 onBeforeClose : function(jqW) {
                                     //return jqW.closeParent(2);
                                     return true;
@@ -72,7 +93,6 @@
 	</script>
 </head>
 <body>
-
 	<div class="_jqwindow framed padded-basic scrollable">
 		<div class="header">
 			<span class="favicon">4545</span>

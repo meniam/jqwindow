@@ -27,11 +27,10 @@ $.jqWindow = function(name, options, parentWindow)
     this.parent      = null;
     this.childList   = [];
 
-    if (this.settings.modal) {
+    if (this.settings.type == 'modal') {
         this.settings.overlayable = true;
         this.settings.minimizable = false;
         this.settings.maximizable = false;
-        this.settings.draggable = false;
         this.settings.resizeable = false;
     }
 
@@ -48,7 +47,8 @@ $.jqWindow = function(name, options, parentWindow)
 
 $.extend($.jqWindow, {
     defaults : {
-        type                     : 'jqwindow_normal jqwindow_padded', // window type [jqwindow_normal, jqwindow_basic, jqwindow_shadow, jqwindow_framed, jqwindow_masked, jqwindow_padded_basic, jqwindow_padded]
+        type                     : 'normal', //window type [normal, modal, alert, confirm, prompt]
+        style                    : 'jqwindow_normal jqwindow_padded', // window style [jqwindow_normal, jqwindow_basic, jqwindow_shadow, jqwindow_framed, jqwindow_masked, jqwindow_padded_basic, jqwindow_padded]
         debug                    : true,
         title                    : '&nbsp;',
         footerContent            : '',
@@ -71,10 +71,10 @@ $.extend($.jqWindow, {
         modal                    : false,
         minimizeArea             : 'left',
         minimizeMaxPerLine       : 5,
-        possiblySpadeNorth       : false, // Possible for the spade north container (or window) when dragg
-        possiblySpadeEast        : false, // Possible for the spade east container (or window) when dragg
-        possiblySpadeSouth       : false, // Possible for the spade south container (or window) when dragg
-        possiblySpadeWest        : false, // Possible for the spade west container (or window) when dragg
+        allowSpadeNorth          : false, // Allow for the spade north container (or window) when dragg
+        allowSpadeEast           : false, // Allow for the spade east container (or window) when dragg
+        allowSpadeSouth          : false, // Allow for the spade south container (or window) when dragg
+        allowSpadeWest           : false, // Allow for the spade west container (or window) when dragg
 
         // css classes 
         windowClass                              : 'jqwindow',
@@ -109,7 +109,7 @@ $.extend($.jqWindow, {
         onAfterOverlayClick                      : function(jqWindow, overlay, event)         { return true; },
         onBeforeResize                           : function(jqWindow, event, currentSizeAndPos) { return true; },
         onResize                                 : function(jqWindow, event, currentSizeAndPos, originalSizeAndPos) { return true; },
-        onAfterResize                            : function(jqWindow, event, currentSizeAndPos, originalSizeAndPos) { return true; },
+        onAfterResize                            : function(jqWindow, event, currentSizeAndPos, originalSizeAndPos) { return true; }
         /* debug end */
     },
 
@@ -228,7 +228,7 @@ $.extend($.jqWindow, {
 
             // create common DOM-structure
             this.window = $('<div></div>').addClass(this.settings.windowClass)
-                                          .addClass(this.settings.type)
+                                          .addClass(this.settings.style)
                                           .attr('name', this.name)
                                           .appendTo(windowContainer);
 
@@ -513,23 +513,23 @@ $.extend($.jqWindow, {
                 var screenDimensions = $.jqWindow.getBrowserScreenDimensions();
                 var scrollPosition = $.jqWindow.getBrowserScrollPosition();
             }
-            if (!this.settings.possiblySpadeWest) {
+            if (!this.settings.allowSpadeWest) {
                 var minX = this.container ? this.container.offset().left : scrollPosition.x;
             } else {
                 var minX = -1;
             }
-            if (!this.settings.possiblySpadeNorth) {
+            if (!this.settings.allowSpadeNorth) {
                 var minY = this.container ? this.container.offset().top : scrollPosition.y;
             } else {
                 var minY = -1;
             }
-            if (!this.settings.possiblySpadeEast) {
+            if (!this.settings.allowSpadeEast) {
                 var maxX = this.container ? this.container.offset().left + this.container.width() - this.window.outerWidth(true)
                                           : scrollPosition.x + screenDimensions.width - this.window.outerWidth(true);
             } else {
                 var maxX = -1;
             }
-            if (!this.settings.possiblySpadeSouth) {
+            if (!this.settings.allowSpadeSouth) {
                 var maxY = this.container ? this.container.offset().top + this.container.height() - this.window.outerHeight(true)
                         : scrollPosition.y + screenDimensions.height - this.window.outerHeight(true);
             } else {
@@ -650,6 +650,13 @@ $.extend($.jqWindow, {
                     top    : this.window.offset().top,
                     left   : this.window.offset().left};
         }
+    },
+
+    confirm : function(message, options)
+    {
+        // Таймер
+        new $.jqWindow('jqwindow_confirm', $.extend(true, {}, options, {type : 'confirm'})).show();
+        return true;
     },
 
     getElementPosition : function(element)
@@ -818,7 +825,7 @@ $.extend($.jqWindow, {
         jqWindow.maximized = true;
 
         this.recountSizeWindowItems(jqWindow);
-    },
+    }
 });
 
 
@@ -1051,7 +1058,7 @@ $.extend(jqWindowManager, {
                                                                                     $.jqWindowManager.resizeOverlay();
                                                                                  });
 
-        if (jqWindow.settings.modal) {
+        if (jqWindow.settings.type == 'modal') {
             jqOverlay.addClass(jqWindow.settings.modalOverlayClass);
         } else {
             jqOverlay.removeClass(jqWindow.settings.modalOverlayClass);
@@ -1062,7 +1069,7 @@ $.extend(jqWindowManager, {
         this.resizeOverlay();
 
         jqOverlay.unbind('click.jqwindow');
-        if (!jqWindow.settings.modal && jqWindow.settings.overlayable) {
+        if (!jqWindow.settings.type == 'modal' && jqWindow.settings.overlayable) {
             jqOverlay.bind('click.jqwindow', function(event) {
                 if (!jqWindow.settings.onBeforeOverlayClick || jqWindow.settings.onBeforeOverlayClick(jqWindow, jqOverlay, event)) {
                     jqWindow.close();
