@@ -24,7 +24,7 @@ $.jqWindow = function(name, options, parentWindow)
     this.settings    = $.extend(true, {}, $.jqWindow.defaults, options);
     this.name        = name;
     this.container   = this.settings.container ? $(this.settings.container) : null;
-    this.parent      = null;
+    this.parent      = null; // parent window if exists
     this.childList   = [];
 
     if (this.settings.type == 'modal') {
@@ -40,7 +40,6 @@ $.jqWindow = function(name, options, parentWindow)
 /**
  * Debug Levels
  *      5 - hook run messages
- *          
  *      6 - hook run params
  *
  */
@@ -71,6 +70,8 @@ $.extend($.jqWindow, {
         modal                    : false,
         minimizeArea             : 'left',
         minimizeMaxPerLine       : 5,
+
+        // What mean Spade =) ? May be use "get out GetOut" instead ?
         allowSpadeNorth          : false, // Allow for the spade north container (or window) when dragg
         allowSpadeEast           : false, // Allow for the spade east container (or window) when dragg
         allowSpadeSouth          : false, // Allow for the spade south container (or window) when dragg
@@ -122,16 +123,26 @@ $.extend($.jqWindow, {
         {
             if (this.create()) {
                 this.setParent(parentWindow);
+
+                // @TODO - Currently top window can't be parent. What if i clicked to the link not in window?
                 if (!this.parent) {
                     this.setParent(jqWindowManager.getLastLayer());
                 }
+
+                // Register window in manager registry
                 if (jqWindowManager.registerWindow(this)) {
                     this.window.attr('id', 'jqwindow_' + this.getId());
                 }
+
                 this.settings.onAfterCreate(this);
             }
         },
 
+        /**
+         * Add child window
+         *
+         * @param jqWindow $.jqWindow
+         */
         addChild : function(jqWindow)
         {
             if (jqWindow && (typeof(jqWindow) == 'string' || typeof(jqWindow) == 'integer')) {
@@ -154,16 +165,31 @@ $.extend($.jqWindow, {
             }
         },
 
+        /**
+         * Get childs count
+         *
+         * @return integer
+         */
         getChildCount : function()
         {
             return this.childList.length;
         },
 
+        /**
+         * Returns parent window object (or null)
+         *
+         * @return null|$.jqWindow
+         */
         getParent : function()
         {
             return this.parent;
         },
 
+        /**
+         * Set parent window from mixed var
+         *
+         * @param parentWindow
+         */
         setParent : function(parentWindow)
         {
             if (parentWindow && (typeof(parentWindow) == 'string' || typeof(parentWindow) == 'integer')) {
@@ -454,6 +480,9 @@ $.extend($.jqWindow, {
         show : function()
         {
             if (this.settings.onBeforeShow(this)) {
+;;;             if (this.settings.debug) {
+;;;                  jqWindowManager.log("Show window: '" + this.getName() + "' #" + this.getId() , 5);
+;;;             }
                 this.window.show();
                 this.settings.onAfterShow(this);
             }
@@ -496,7 +525,7 @@ $.extend($.jqWindow, {
         },
 
         /**
-         * Window grag
+         * Window drag
          *
          * @param mousePos mouse position at screen (browser window)
          * @param event event object
@@ -571,7 +600,7 @@ $.extend($.jqWindow, {
         maximize : function()
         {
 ;;;         if (this.settings.debug) {
-;;;             jqWindowManager.log("onBeforeMaximize: '" + this.getName() + "' #" + this.getId() , 5);
+;;;             jqWindowManager.log("Maximize: '" + this.getName() + "' #" + this.getId() , 5);
 ;;;         }
 
             $.jqWindow.maximize(this);
@@ -607,42 +636,84 @@ $.extend($.jqWindow, {
             jqWindowManager.focusWindow(this);
         },
 
+        /**
+         * Set the contents to the window
+         *
+         * @param content
+         */
         setContent : function(content)
         {
             this.content.html(content);
         },
 
+        /**
+         * Set the window title
+         *
+         * @param title
+         */
         setTitle : function(title)
         {
             this.header.children('.' + this.settings.headerTitleClass).html(title);
         },
 
+        /**
+         * Get the window name (it's not an id, and it's not a window title)
+         *
+         * @return string
+         */
         getName : function()
         {
             return this.name;
         },
 
+        /**
+         * Get window unique id
+         *
+         * @return integer
+         */
         getId : function()
         {
             return this.id;
         },
 
+        /**
+         * Get DOM elemant id attr
+         *
+         * @return mixed
+         */
         getDomId : function()
         {
             return this.window.attr('id');
         },
 
+        /**
+         * Set DOM element z-index
+         *
+         * @param zIndex integer
+         * @return integer
+         */
         setZindex : function(zIndex)
         {
             this.zIndex = zIndex;
             this.window.css('z-index', zIndex);
+            return zIndex;
         },
 
+        /**
+         * Set DOM element z-index
+         *
+         * @return integer
+         */
         getZindex : function()
         {
             return this.zIndex;
         },
 
+        /**
+         * Get position and size
+         *
+         * @return struct
+         */
         getCurrentSizeAndPos : function()
         {
             return {width  : this.window.width(),
@@ -659,6 +730,12 @@ $.extend($.jqWindow, {
         return true;
     },
 
+    /**
+     * Get element position
+     *
+     * @todo need to check for the jquery object
+     * @param element
+     */
     getElementPosition : function(element)
     {
         var top = 0;
@@ -1089,10 +1166,10 @@ $.extend(jqWindowManager, {
             var windowDimensions = $.jqWindow.getBrowserScreenDimensions();
         }
 
-        var width = jqWindow.container ? jqWindow.container.width() : windowDimensions.width;
+        var width  = jqWindow.container ? jqWindow.container.width() : windowDimensions.width;
         var height = jqWindow.container ? jqWindow.container.height() : windowDimensions.height;
-        var top = jqWindow.container ? jqWindow.container.offset().top : 0;
-        var left = jqWindow.container ? jqWindow.container.offset().left : 0;
+        var top    = jqWindow.container ? jqWindow.container.offset().top : 0;
+        var left   = jqWindow.container ? jqWindow.container.offset().left : 0;
 
         this.overlay.css({
             width   : width,
@@ -1123,4 +1200,4 @@ $.extend(jqWindowManager, {
 
 });
 
-})(jQuery)
+})(jQuery);
