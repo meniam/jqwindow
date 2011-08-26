@@ -19,4 +19,4 @@ Features
 * Before/After action hooks;
 * Easy access to all windows elements
   (setTitle(), setContetns(), etc...)
-* Multi-object architecture;
+* Multi-object architecture.
