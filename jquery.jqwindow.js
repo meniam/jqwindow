@@ -71,11 +71,10 @@ $.extend($.jqWindow, {
         minimizeArea             : 'left',
         minimizeMaxPerLine       : 5,
 
-        // What mean Spade =) ? May be use "get out GetOut" instead ?
-        allowSpadeNorth          : false, // Allow for the spade north container (or window) when dragg
-        allowSpadeEast           : false, // Allow for the spade east container (or window) when dragg
-        allowSpadeSouth          : false, // Allow for the spade south container (or window) when dragg
-        allowSpadeWest           : false, // Allow for the spade west container (or window) when dragg
+        allowSpadeNorth          : false, // Allow outstep north boudn of the container (or window) while dragging
+        allowSpadeEast           : false, // Allow outstep east boudn of the container (or window) while dragging
+        allowSpadeSouth          : false, // Allow outstep south boudn of the container (or window) while dragging
+        allowSpadeWest           : false, // Allow outstep west boudn of the container (or window) while dragging
 
         // css classes 
         windowClass                              : 'jqwindow',
@@ -208,9 +207,9 @@ $.extend($.jqWindow, {
         /**
          * Close parent window
          *
-         * @todo need close all parents or some defined value of parents :)
+         * @todo need to close all parents or some defined count of parents :)
          *
-         * @param itemsToClose How many parent need to close
+         * @param itemsToClose How many parents need to close
          * @return boolean always true
          */
         closeParent : function(itemsToClose)
@@ -233,7 +232,7 @@ $.extend($.jqWindow, {
         },
 
         /**
-         * At this point we are create DOM structure
+         * At this point we create DOM structure
          * for new window, but don't show it
          *
          * At same time we bind all events on
@@ -244,7 +243,7 @@ $.extend($.jqWindow, {
         create: function()
         {
             // if window exists (second call) or BeforeCreate return false
-            // value we are don't create DOM structure
+            // value we don't create DOM structure
             if (this.window || !this.settings.onBeforeCreate()) {
                 return false;
             }
@@ -375,6 +374,12 @@ $.extend($.jqWindow, {
                                               .height(contentHeight));
             this.body = this.content.parent();
 
+            /*this.content.delegate('a[href^='my'', function() {
+                if (window.location.hash) {
+                    alert(1);
+                }
+            })*/
+
             if (this.settings.resizeable) {
                 $('<div></div>').css({position : 'absolute',
                                       top    : 0,
@@ -491,15 +496,15 @@ $.extend($.jqWindow, {
         /**
          * Close the window
          *
-         * If you are redefine this method in options,
-         * you have watch for close functionality by youself
+         * You must watch for close functionality by youself
+         * if you redefine this method in options!
          *
          * You can use this.close() in your method to close window
          *
-         * False value, returned by BeforeClose,  prevents closes window
+         * False value, returned by BeforeClose,  prevents closing window
          *
          * !!! Important !!!
-         * Remember: Close method also does some things:
+         * Remember: Close method also does next things:
          *  - it removes window from manager registry
          *  - hides overlay layer
          *
@@ -527,7 +532,7 @@ $.extend($.jqWindow, {
         /**
          * Window drag
          *
-         * @param mousePos mouse position at screen (browser window)
+         * @param mousePos mouse position on the screen (browser window)
          * @param event event object
          */
         drag : function (mousePos, event)
@@ -538,7 +543,7 @@ $.extend($.jqWindow, {
 
             // We allow drag window only within its territories (container)
             if (!this.container) {
-                // If container not defined we can drag window in within screen (browser window)
+                // If container  is not defined we can drag window within the screen (browser window)
                 var screenDimensions = $.jqWindow.getBrowserScreenDimensions();
                 var scrollPosition = $.jqWindow.getBrowserScrollPosition();
             }
@@ -637,7 +642,7 @@ $.extend($.jqWindow, {
         },
 
         /**
-         * Set the contents to the window
+         * Set content of the window
          *
          * @param content
          */
@@ -647,7 +652,7 @@ $.extend($.jqWindow, {
         },
 
         /**
-         * Set the window title
+         * Set window title
          *
          * @param title
          */
@@ -657,7 +662,7 @@ $.extend($.jqWindow, {
         },
 
         /**
-         * Get the window name (it's not an id, and it's not a window title)
+         * Get window name (it's not an id, and it's not a window title)
          *
          * @return string
          */
@@ -677,7 +682,7 @@ $.extend($.jqWindow, {
         },
 
         /**
-         * Get DOM elemant id attr
+         * Get DOM element id attr
          *
          * @return mixed
          */
@@ -802,7 +807,7 @@ $.extend($.jqWindow, {
     },
 
     /**
-     * @todo Need fix. Lost current position and dimensions of window and reset to default when browser window resize
+     * @todo Need fix. Lost current position and dimensions of the window and reset to defaults when browser window resize
      */
     recountWindowSizeAndPosition : function(jqWindow)
     {
@@ -1050,7 +1055,7 @@ $.extend(jqWindowManager, {
     },
 
     /**
-     * Get count of windows in the registry
+     * Get count of the windows in the registry
      *
      * @return integer
      */
