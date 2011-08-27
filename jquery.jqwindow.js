@@ -76,6 +76,9 @@ $.extend($.jqWindow, {
         allowSpadeSouth          : false, // Allow outstep south boudn of the container (or window) while dragging
         allowSpadeWest           : false, // Allow outstep west boudn of the container (or window) while dragging
 
+        scrollToDuration         : 200, //Parameter "duration" of the animation scrolling window content
+        scrollToEasing           : 'linear', //Parameter "easing" of the animation scrolling window content
+
         // css classes 
         windowClass                              : 'jqwindow',
         headerClass                              : 'jqwindow_header',
@@ -109,7 +112,9 @@ $.extend($.jqWindow, {
         onAfterOverlayClick                      : function(jqWindow, overlay, event)         { return true; },
         onBeforeResize                           : function(jqWindow, event, currentSizeAndPos) { return true; },
         onResize                                 : function(jqWindow, event, currentSizeAndPos, originalSizeAndPos) { return true; },
-        onAfterResize                            : function(jqWindow, event, currentSizeAndPos, originalSizeAndPos) { return true; }
+        onAfterResize                            : function(jqWindow, event, currentSizeAndPos, originalSizeAndPos) { return true; },
+        onBeforeScrollTo                         : function(jqWindow) { return true; },
+        onAfterScrollTo                          : function(jqWindow) { return true; },
         /* debug end */
     },
 
@@ -374,11 +379,18 @@ $.extend($.jqWindow, {
                                               .height(contentHeight));
             this.body = this.content.parent();
 
-            /*this.content.delegate('a[href^='my'', function() {
-                if (window.location.hash) {
-                    alert(1);
+            // Scroll to anchor
+            this.content.delegate('a[href*="#"]', 'click', function(event) {
+                var url = $(this).attr("href");
+                var anchorName = url.substr(url.search('#') + 1);
+                if (anchorName.length && jqWindow.settings.onBeforeScrollTo(jqWindow)) {
+                    var scrollTop = $('[name="' + anchorName + '"]').offset().top - jqWindow.body.offset().top + jqWindow.body.scrollTop();
+                    jqWindow.body.animate({scrollTop: scrollTop}, jqWindow.settings.scrollToDuration, jqWindow.settings.scrollToEasing, function() {
+                        jqWindow.settings.onAfterScrollTo(jqWindow);
+                    });
                 }
-            })*/
+                event.preventDefault();
+            })
 
             if (this.settings.resizeable) {
                 $('<div></div>').css({position : 'absolute',
@@ -1137,7 +1149,7 @@ $.extend(jqWindowManager, {
         jqOverlay.jqWindow = jqWindow;
 
         (jqOverlay.jqWindow.container ? jqOverlay.jqWindow.container : $(window)).bind('resize.jqwindow_resize_overlay', function() {
-                                                                                    $.jqWindowManager.resizeOverlay();
+                                                                                    jqWindowManager.resizeOverlay();
                                                                                  });
 
         if (jqWindow.settings.type == 'modal') {
