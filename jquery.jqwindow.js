@@ -390,7 +390,7 @@ $.extend($.jqWindow, {
                     });
                 }
                 event.preventDefault();
-            })
+            });
 
             if (this.settings.resizeable) {
                 $('<div></div>').css({position : 'absolute',
