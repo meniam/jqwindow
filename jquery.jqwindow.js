@@ -737,6 +737,16 @@ $.extend($.jqWindow, {
                     height : this.window.height(),
                     top    : this.window.offset().top,
                     left   : this.window.offset().left};
+        },
+
+        /**
+         * Update content of the window
+         *
+         * @todo
+         */
+        refreshContent : function()
+        {
+            
         }
     },
 
@@ -962,6 +972,10 @@ $.extend(jqWindowManager, {
         {
             jqWindowManager.getWindow(jqWindow);
         },
+        getWindowByName : function(name)
+        {
+            return jqWindowManager.getWindowByName(name);
+        },
         getWindowCount : function()
         {
             jqWindowManager.getWindowCount();
@@ -983,6 +997,16 @@ $.extend(jqWindowManager, {
         var windowId = this.getWindowIdFromMixed(jqWindow);
         for (var key in this.windows) {
             if (this.windows[key].getId() == windowId) {
+                return this.windows[key];
+            }
+        }
+        return null;
+    },
+
+    getWindowByName : function(name)
+    {
+        for (var key in this.windows) {
+            if (this.windows[key].getName() == name) {
                 return this.windows[key];
             }
         }
