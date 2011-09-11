@@ -857,44 +857,66 @@ $.extend($.jqWindow, {
         }
         jqWindow.originalSizeAndPos = jqWindow.getCurrentSizeAndPos();
 
-        // Calculate window width and height
-        var windowWidth = jqWindow.settings.width;
-        if (windowWidth[windowWidth.length - 1] == '%') {
-            windowWidth = (parseInt(windowWidth.substr(0, windowWidth.length - 1)) * $(window).width() / 100);
-        }
+        //if (!jqWindow.savedWindowParams) {
+            // Calculate window width and height
+            var windowWidth = jqWindow.settings.width;
+            if (windowWidth[windowWidth.length - 1] == '%') {
+                windowWidth = (parseInt(windowWidth.substr(0, windowWidth.length - 1)) * (jqWindow.container ? jqWindow.container : $(window)).width() / 100);
+            }
+            var windowHeight = jqWindow.settings.height;
+            if (windowHeight[windowHeight.length - 1] == '%') {
+                windowHeight = (parseInt(windowHeight.substr(0, windowHeight.length - 1)) * (jqWindow.container ? jqWindow.container : $(window)).height() / 100);
+            }
 
-        var windowHeight = jqWindow.settings.height;
-        if (windowHeight[windowHeight.length - 1] == '%') {
-            windowHeight = (parseInt(windowHeight.substr(0, windowHeight.length - 1)) * $(window).height() / 100);
-        }
+            if (jqWindow.settings.minWidth > 0 && windowWidth < jqWindow.settings.minWidth) {
+                windowWidth = jqWindow.settings.minWidth;
+            } else if (jqWindow.settings.maxWidth > 0 && windowWidth > jqWindow.settings.maxWidth) {
+                windowWidth = jqWindow.settings.maxWidth;
+            }
+            if (jqWindow.settings.minHeight > 0 && windowHeight < jqWindow.settings.minHeight) {
+                windowHeight = jqWindow.settings.minHeight;
+            } else if (jqWindow.settings.maxHeight > 0 && windowHeight > jqWindow.settings.maxHeight) {
+                windowHeight = jqWindow.settings.maxHeight;
+            }
 
-        /**
-         * @todo Change to "if" construction
-         */
-        windowWidth = (jqWindow.settings.minWidth > 0 && windowWidth < jqWindow.settings.minWidth) ? jqWindow.settings.minWidth : ((jqWindow.settings.maxWidth > 0 && windowWidth > jqWindow.settings.maxWidth) ? jqWindow.settings.maxWidth : windowWidth);
-        windowHeight = (jqWindow.settings.minHeight > 0 && windowHeight < jqWindow.settings.minHeight) ? jqWindow.settings.minHeight : ((jqWindow.settings.maxHeight > 0 && windowHeight > jqWindow.settings.maxHeight) ? jqWindow.settings.maxHeight : windowHeight);
+            // calculate and set position of window
+            var containerPos = this.getElementPosition(jqWindow.container);
+            var scrollPos = this.getBrowserScrollPosition();
 
-        // calculate and set position of window
-        var containerPos = this.getElementPosition(jqWindow.container);
-        var scrollPos = this.getBrowserScrollPosition();
+            var windowPosX = 0;
+            if (jqWindow.settings.left != -1) {
+                windowPosX = jqWindow.settings.left;
+                if (windowPosX[windowPosX.length - 1] == '%') {
+                    windowPosX = (parseInt(windowPosX.substr(0, windowPosX.length - 1)) * (jqWindow.container ? jqWindow.container : $(window)).width() / 100);
+                }
+            } else {
+                windowPosX = ((jqWindow.container ? jqWindow.container : $(window)).width() - windowWidth) / 2;
+            }
+            windowPosX += containerPos.x;
 
-        var windowPosX = containerPos.x + (jqWindow.settings.left >= 0)
-                                ? jqWindow.settings.left
-                                : ($(jqWindow.container ? jqWindow.container : $(window)).width() - windowWidth) / 2;
+            var windowPosY = 0;
+            if (jqWindow.settings.top != -1) {
+                windowPosY = jqWindow.settings.top;
+                if (windowPosY[windowPosY.length - 1] == '%') {
+                    windowPosY = (parseInt(windowPosY.substr(0, windowPosY.length - 1)) * (jqWindow.container ? jqWindow.container : $(window)).height() / 100);
+                }
+            } else {
+                windowPosY = ((jqWindow.container ? jqWindow.container : $(window)).height() - windowHeight) / 2;
+            }
+            windowPosY += containerPos.y;
 
-        var windowPosY = containerPos.y + (jqWindow.settings.top >= 0)
-                            ? jqWindow.settings.top
-                            : ($(jqWindow.container ? jqWindow.container : $(window)).height() - windowHeight) / 2;
-
-        if (!jqWindow.container) {
-            windowPosX += scrollPos.x;
-            windowPosY += scrollPos.y;
-        }
+            if (!jqWindow.container) {
+                windowPosX += scrollPos.x;
+                windowPosY += scrollPos.y;
+            }
+       //}
 
         jqWindow.window.css({
             left    : windowPosX,
             top     : windowPosY
         }).width(windowWidth).height(windowHeight);
+
+
 
         if (jqWindow.settings.onAfterResize) {
             jqWindow.settings.onAfterResize(jqWindow, window.event, jqWindow.getCurrentSizeAndPos(), jqWindow.originalSizeAndPos);
