@@ -68,8 +68,6 @@ $.extend($.jqWindow, {
         resizeable               : true,
         overlayable              : false,
         modal                    : false,
-        minimizeArea             : 'left',
-        minimizeMaxPerLine       : 5,
 
         allowSpadeNorth          : false, // Allow outstep north boudn of the container (or window) while dragging
         allowSpadeEast           : false, // Allow outstep east boudn of the container (or window) while dragging
@@ -1040,7 +1038,7 @@ $.extend(jqWindowManager, {
             /**
              * new window is always on top (current)
              */
-            this.focusWindow(jqWindow);
+            jqWindow.focus();
             if (jqWindow.settings.overlayable) {
                 this.overlayableWindowCount++;
             }
@@ -1070,7 +1068,10 @@ $.extend(jqWindowManager, {
             //$(window).unbind('resize.jqwindow_' + jqWindow.getId());
 
             this.deleteLayer(jqWindow);
-            this.focusWindow(this.getLastLayer());
+            var lastLayer = this.getLastLayer();
+            if (lastLayer instanceof $.jqWindow) {
+                lastLayer.focus();
+            }
             if (jqWindow.settings.overlayable) {
                 for (var i = this.getWindowCount() - 1; i >= 0; i--) {
                     if (this.windows[i] instanceof $.jqWindow && this.windows[i].settings.overlayable) {
@@ -1104,13 +1105,20 @@ $.extend(jqWindowManager, {
     {
         jqWindow = this.getWindow(jqWindow);
 
-        if (jqWindow instanceof $.jqWindow && jqWindow != this.getLastLayer()) {
-            if (jqWindow.zIndex) {
-                this.deleteLayer(jqWindow);
+        var lastLayer = this.getLastLayer();
+        if (jqWindow instanceof $.jqWindow) {
+            if (jqWindow != lastLayer) {
+                if (jqWindow.zIndex) {
+                    this.deleteLayer(jqWindow);
+                }
+                var windowZIndex = lastLayer ? lastLayer.getZindex() + 2 : this.settings.zIndexStart;
+                jqWindow.setZindex(windowZIndex);
+                this.layers.push(jqWindow);
             }
-            var windowZIndex = this.getLastLayer() ? this.getLastLayer().getZindex() + 2 : this.settings.zIndexStart;
-            jqWindow.setZindex(windowZIndex);
-            this.layers.push(jqWindow);
+            if (lastLayer) {
+                lastLayer.window.removeClass(lastLayer.settings.focusedClass);
+            }
+            jqWindow.window.addClass(jqWindow.settings.focusedClass);
         }
     },
 
