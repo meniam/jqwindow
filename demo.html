@@ -37,8 +37,7 @@
 					return true;
 				},
                 onBeforeOverlayClick : function() {
-                    alert(1);
-                    return false;
+                    return true;
                 },
 				onAfterShow : function(jqW) {
 					jqW.setContent('Test test');
@@ -83,7 +82,7 @@
 				},
 				onAfterClose : function() {
 					//alert('close end');
-				}
+				},
 			}).show();
 		});
 	</script>

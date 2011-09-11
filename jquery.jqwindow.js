@@ -113,6 +113,8 @@ $.extend($.jqWindow, {
         onAfterResize                            : function(jqWindow, event, currentSizeAndPos, originalSizeAndPos) { return true; },
         onBeforeScrollTo                         : function(jqWindow) { return true; },
         onAfterScrollTo                          : function(jqWindow) { return true; },
+        onBeforeFocus                            : function(jqWindow) { return true; },
+        onAfterFocus                             : function(jqWindow) { return true; },
         /* debug end */
     },
 
@@ -647,8 +649,12 @@ $.extend($.jqWindow, {
          */
         focus : function()
         {
-            // Current window (top window)
-            jqWindowManager.focusWindow(this);
+            if (!this.settings.onBeforeFocus || this.settings.onBeforeFocus(this)) {
+                jqWindowManager.focusWindow(this);
+            }
+            if (this.settings.onAfterFocus) {
+                this.settings.onAfterFocus(this);
+            }
         },
 
         /**
