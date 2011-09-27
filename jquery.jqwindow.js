@@ -8,7 +8,7 @@
  *   http://www.gnu.org/licenses/gpl.html
  *
  * @copyright 2011 Zapp-East llc.
- * @author Julia Shilova <jul@inamerica.ru> main contributor and maintainer
+ * @author Julia Shilova <julinary@gmail.com> main contributor and maintainer
  * @author Eugene Myazin <meniam@gmail.com>
  * @since 11 augest 2011
  */
@@ -77,7 +77,7 @@ $.extend($.jqWindow, {
         scrollToDuration         : 200, //Parameter "duration" of the animation scrolling window content
         scrollToEasing           : 'linear', //Parameter "easing" of the animation scrolling window content
 
-        // css classes 
+        // css classes
         windowClass                              : 'jqwindow',
         headerClass                              : 'jqwindow_header',
         headerTitleClass                         : 'jqwindow_title',
@@ -114,7 +114,7 @@ $.extend($.jqWindow, {
         onBeforeScrollTo                         : function(jqWindow) { return true; },
         onAfterScrollTo                          : function(jqWindow) { return true; },
         onBeforeFocus                            : function(jqWindow) { return true; },
-        onAfterFocus                             : function(jqWindow) { return true; },
+        onAfterFocus                             : function(jqWindow) { return true; }
         /* debug end */
     },
 
@@ -288,7 +288,7 @@ $.extend($.jqWindow, {
                            .bind('mousedown.jqwindow_drag', function(event) {
                                 jqWindow.window.addClass('drag');
                                 var mousePos = {x : event.pageX - parseInt(jqWindow.window.offset().left),
-                                                y : event.pageY - parseInt(jqWindow.window.offset().top)}
+                                                y : event.pageY - parseInt(jqWindow.window.offset().top)};
                                 var i = 0;
                                 $(window).bind('mousemove.jqwindow_drag', function(event) {
                                     jqWindow.drag(mousePos, event);
@@ -372,7 +372,7 @@ $.extend($.jqWindow, {
                                            .addClass('loading')
                                            .click(function() {
                                                 jqWindow.content.removeClass('loading');
-                                            })
+                                           })
                                            .appendTo(this.window);
             var contentHeight = this.window.height() - this.header.outerHeight(true) - (this.content.outerHeight(true) - this.content.height());
             this.content.wrap($('<div></div>').addClass(this.settings.bodyClass)
@@ -577,7 +577,7 @@ $.extend($.jqWindow, {
             }
             if (!this.settings.allowSpadeSouth) {
                 var maxY = this.container ? this.container.offset().top + this.container.height() - this.window.outerHeight(true)
-                        : scrollPosition.y + screenDimensions.height - this.window.outerHeight(true);
+                                          : scrollPosition.y + screenDimensions.height - this.window.outerHeight(true);
             } else {
                 var maxY = -1;
             }
@@ -640,7 +640,7 @@ $.extend($.jqWindow, {
             this.headerActionBar.children('.' + this.settings.headerMaximizeButtonClass).show();
             this.headerActionBar.children('.' + this.settings.headerMinimizeButtonClass).hide();
             this.maximized = false;
-            
+
             $.jqWindow.recountSizeWindowItems(this);
         },
 
@@ -750,7 +750,7 @@ $.extend($.jqWindow, {
          */
         refreshContent : function()
         {
-            
+
         }
     },
 
@@ -939,9 +939,9 @@ $.extend($.jqWindow, {
         }
 
         jqWindow.windowSaveParams = {width  : jqWindow.window.width(),
-                                 height : jqWindow.window.height(),
-                                 x      : jqWindow.window.offset().left,
-                                 y      : jqWindow.window.offset().top}
+                                     height : jqWindow.window.height(),
+                                     x      : jqWindow.window.offset().left,
+                                     y      : jqWindow.window.offset().top};
 
         jqWindow.window.css({
             width    : newDimensions.width,
