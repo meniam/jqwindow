@@ -968,12 +968,12 @@ $.jqWindowManager = function(options)
         this._instance.setOptions(options);
     }
     return this._instance;
-}
+};
 
 var jqWindowManager = function(options)
 {
     jqWindowManager.settings = $.extend(true, {}, jqWindowManager.settings, options);
-}
+};
 
 $.extend(jqWindowManager, {
     settings : {
