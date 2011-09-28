@@ -1,0 +1,49 @@
+.jqwindow_normal {
+    background-color: #EFEFEF;
+    border: 2px solid #333333;
+    border-radius: 9px;
+    box-shadow: 0 0 50px #CCCCCC;
+}
+
+.jqwindow > .jqwindow_header {
+    background: none;
+    border-bottom: none;
+    border-radius: 9px 9px 0 0;
+    padding: 0.7em 1.8em;
+}
+
+.jqwindow > .jqwindow_header > .jqwindow_title {
+    display: none;
+}
+.jqwindow > .jqwindow_header > .jqwindow_action_bar > .jqwindow_button {
+    display: none;
+}
+
+.jqwindow > .jqwindow_header > .jqwindow_action_bar > .jqwindow_button.jqwindow_close {
+    background: url("../img/close.png") no-repeat;
+    width: 36px;
+    height: 36px;
+    display: block;
+    position: absolute;
+    top: -15px;
+    right: -15px;
+}
+.jqwindow > .jqwindow_header > .jqwindow_action_bar > .jqwindow_button.jqwindow_close:hover {
+    background: url("../img/close.png") no-repeat;
+}
+
+.jqwindow > .jqwindow_body {
+    border-radius: 0 0 9px 9px;
+    margin: 0 1em;
+}
+
+.jqwindow_padded > .jqwindow_body > .jqwindow_content {
+    background-color: #FFF;
+    border: 1px solid #C9C9C9;
+    border-radius: 0.2em 0.2em 0.2em 0.2em;
+}
+
+.jqwindow_overlay {
+    background-color: #333333;
+    opacity: 0.9;
+}

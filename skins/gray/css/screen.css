@@ -97,7 +97,9 @@
 	cursor: pointer;
 	display: inline-block;
 	vertical-align: top;
-	*display: inline;
+	/*HACK*/
+    * display: inline;
+    /*/HACK*/
 	height: 15px;
 	margin: 0 4px;
 	width: 15px;
