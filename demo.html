@@ -9,7 +9,7 @@
 	<link rel="stylesheet" href="skins/gray/css/screen.css">
 	<script type="text/javascript">
         $(document).ready(function() {
-            new $.jqWindow('test', {
+            /*new $.jqWindow('test', {
                 type : 'modal',
 				title : 'Шла Саша по шоссе и сосала соску &copy; Руская народная скороговорка',
                 onAfterClose: function (result) {
@@ -20,10 +20,8 @@
             $.jqWindow.confirm('kjfalkjl', {
                 onAfterClose: function (result) { alert(result)
                 }
-            });
+            });*/
 
-
-            $.jqWindowManager({persistentOverlay : false});
 			w = new $.jqWindow('test', {
 				title : 'Шла Саша по шоссе и сосала соску &copy; Руская народная скороговорка',
 				width : 1000,
@@ -39,8 +37,7 @@
 					return true;
 				},
                 onBeforeOverlayClick : function() {
-                    alert(1);
-                    return false;
+                    return true;
                 },
 				onAfterShow : function(jqW) {
 					jqW.setContent('Test test');
@@ -85,7 +82,7 @@
 				},
 				onAfterClose : function() {
 					//alert('close end');
-				}
+				},
 			}).show();
 		});
 	</script>
