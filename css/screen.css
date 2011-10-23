@@ -40,6 +40,7 @@ div#navigation {
     float:left;
     width:22%;
     margin-left:-100%
+    padding-left:4em;
 }
 
 div#extra {
@@ -47,9 +48,6 @@ div#extra {
     width:100%
 }
 
-div.logo {
-    padding-left:4em;
-}
 
 div.logo b {
     font-size: 1.5em;
@@ -75,7 +73,7 @@ ul.navigation {
     padding:0;
     list-style-type: none;
     list-style-position: outside;
-    margin:2em 4em 0 4em;
+    margin:2em 4em 0 0em;
 }
 
 ul.navigation li {
