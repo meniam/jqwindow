@@ -39,7 +39,7 @@ div#content {
 div#navigation {
     float:left;
     width:22%;
-    margin-left:-100%
+    margin-left:-100%;
     padding-left:4em;
 }
 
@@ -50,14 +50,13 @@ div#extra {
 
 
 div.logo b {
-    font-size: 1.5em;
+    font-size: 1.4em;
     display:block;
     font-weight: normal;
 }
 
 div.logo span {
-    font-size: 0.8em;
-    letter-spacing: 0.4em;
+    font-size: 0.65em;
 }
 
 a {
