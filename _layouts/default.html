@@ -1,14 +1,45 @@
-<!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en-us">
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
 <head>
-   <title>{{ page.title }}</title>
-    <meta http-equiv="content-type" content="text/html; charset=utf-8" />
-   <meta name="author" content="Eugene Myazin" />
+    <title>{{ page.title }} - jQuery Window Engine Plugin</title>
+    <meta http-equiv="content-type" content="text/html; charset=UTF-8">
+    <meta name="author" content="Eugene Myazin" />
+    <meta name="keywords" content="jquery, window, engine, plugin" />
+    <meta name="description" content="" />
+    <link href="/css/screen.css" media="print" rel="stylesheet" type="text/css" />
 </head>
 <body>
+<body>
+<div id="container">
+    <div id="header">&nbsp;</div>
 
-{{ content }}
+    <div id="wrapper">
+        <div id="content">
+            {{ content }}
+        </div>
+    </div>
 
+    <div id="navigation">
+        <div class="logo">
+            <img src="/img/logo.png" style="width:100px; margin-left:2em;"/>
+<!--            <b>jQuery</b>
+            <span>window</span> -->
+        </div>
 
+        <ul class="navigation">
+            <li><a href="/about/">About</a></li>
+            <li><a href="/license/">License</a></li>
+            <li><a href="/download/">Download</a></li>
+
+            <li><a href="/changelog/">Changelog</a></li>
+            <li><a href="/documentation/">Documentation</a></li>
+            <li><a href="/contacts/">Contacts</a></li>
+        </ul>
+    </div>
+
+    <div id="extra"></div>
+    <div id="footer">&copy; Some Good People, 2011</div>
+
+</div>
 </body>
 </html>
