@@ -26,13 +26,13 @@
         </div>
 
         <ul class="navigation">
-            <li><a class="active" href="/about.html">jqWindow</a></li>
-            <li><a href="/license.html">License</a></li>
-            <li><a href="/download.html">Download</a></li>
+            <li><a {% if page.active_menu == 'about' %}class="active"{% endif %} href="/">jqWindow</a></li>
+            <li><a {% if page.active_menu == 'license' %}class="active"{% endif %} href="/license.html">License</a></li>
+            <li><a {% if page.active_menu == 'download' %}class="active"{% endif %} href="/download.html">Download</a></li>
 
-            <li><a href="/changelog.html">Changelog</a></li>
-            <li><a href="/documentation.html">Documentation</a></li>
-            <li><a href="/contacts.html">Contacts</a></li>
+            <li><a {% if page.active_menu == 'changelog' %}class="active"{% endif %} href="/changelog.html">Changelog</a></li>
+            <li><a {% if page.active_menu == 'documentation' %}class="active"{% endif %} href="/documentation.html">Documentation</a></li>
+            <li><a {% if page.active_menu == 'contacts' %}class="active"{% endif %} href="/contacts.html">Contacts</a></li>
         </ul>
     </div>
 
