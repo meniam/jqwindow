@@ -13,7 +13,7 @@ div#header {
 }
 
 div#footer {
-    margin: 0 4em;
+    margin: 4em 4em 0 4em;
     font-size:75%
 }
 
@@ -57,6 +57,7 @@ div.logo b {
 
 div.logo span {
     font-size: 0.65em;
+    color:#575757;
 }
 
 a {
