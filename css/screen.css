@@ -47,6 +47,10 @@ div#extra {
     width:100%
 }
 
+div.logo {
+    padding-left:2em;
+}
+
 div.logo b {
     font-size: 3em;
     display:block;
