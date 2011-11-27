@@ -9,81 +9,41 @@
 	<link rel="stylesheet" href="skins/gray/css/screen.css">
 	<script type="text/javascript">
         $(document).ready(function() {
-            /*new $.jqWindow('test', {
-                type : 'modal',
-				title : 'Шла Саша по шоссе и сосала соску &copy; Руская народная скороговорка',
-                onAfterClose: function (result) {
-                    alert(result);
-                }
+            //var jqW = new $.jqWindow('window', {});
+            /*jqW.addEventListener('before_show', function() {
+                console.log(111111);
+            }); */
+            $.jqWindowManager({logLevel: 3}).addEventListener('after_show', function() {
+                console.log('any window listener');
+                return false;
+            });
+            $.jqWindowManager().addWindow('test').addEventListener('after_show', function(jqWin) {
+                console.log('listener');
+                jqWin.setTitle('test');
+                return true;
+            }).addEventListener(function(event, jqWin) {
+                //console.log('This function listener all event. Now event:' + event);
+                jqWin.setTitle(event);
+                //console.log(jqWin);
+                return true;
             }).show();
 
-            $.jqWindow.confirm('kjfalkjl', {
-                onAfterClose: function (result) { alert(result)
-                }
-            });*/
+            var jqW2 = $.jqWindowManager().addWindow('update', {
+                title : 'Pack',
+                width : '50%',
+                height : '90%',
+                left : 'center',
+                top : 'middle'
+            });
+            jqW2.show();
 
-			w = new $.jqWindow('test', {
-				title : 'Шла Саша по шоссе и сосала соску &copy; Руская народная скороговорка',
-				width : 1000,
-                overlayable : true,
-				onBeforeShow : function() {
-					/*new $.jqWindow('alert', {
-						onAfterCreate : function(jqW) {
-							jqW.setContent('ОШИБКА');
-							return true;
-						}
-					}).show();*/
+            $.jqWindowManager().addWindow('add', {
+                left : 900,
+                top : 200
+            }).show().resize('10%', '10%');
 
-					return true;
-				},
-                onBeforeOverlayClick : function() {
-                    return true;
-                },
-				onAfterShow : function(jqW) {
-					jqW.setContent('Test test');
-                    new $.jqWindow('test2', {
-                        title : 'Дочернее окно',
-                        width : '20%',
-                        left : 100,
-                        top : 300,
-                        //overlayable : true,
-                        onAfterShow : function(jqW) {
-                            //jqW.setContent('hi');
-                            new $.jqWindow('test3', {
-                                title : '1',
-                                height : 300,
-                                width : '10%',
-                                top : 300,
-                                left : 900,
-                                modal : true,
-                                allowSpadeNorth : true,
-                                onBeforeClose : function(jqW) {
-                                    //return jqW.closeParent(2);
-                                    return true;
-                                }
-                            }, jqW).show();
-                        }
-                    }, jqW).show();
+            $.jqWindowManager().getWindowByName('add').setContent('Content of add');
 
-					//alert('show end');
-				},
-				onAfterCreate : function(jqW) {
-					jqW.setContent('Test test');
-					//alert('create end');
-				},
-				onBeforeCreate : function() {
-					//alert('create begin');
-					return true;
-				},
-				onBeforeClose : function(jqW) {
-					jqW.setContent('Close');
-					//alert('close begin');
-					return true;
-				},
-				onAfterClose : function() {
-					//alert('close end');
-				},
-			}).show();
 		});
 	</script>
 </head>

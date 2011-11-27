@@ -1,5 +1,5 @@
 /**
- * jQuery Window Plugin v.0.1
+ * jQuery Window Plugin v.0.2
  *
  * Copyright (c) 2011 Zapp-East llc.
  *
@@ -10,48 +10,347 @@
  * @copyright 2011 Zapp-East llc.
  * @author Julia Shilova <julinary@gmail.com> main contributor and maintainer
  * @author Eugene Myazin <meniam@gmail.com>
+ * @version 0.2 beta
  * @since 11 augest 2011
  */
 (function($) {
-/**
- * jqWindow constructor
- *
- * @param name
- * @param options
- */
-$.jqWindow = function(name, options, parentWindow)
-{
-    this.settings    = $.extend(true, {}, $.jqWindow.defaults, options);
-    this.name        = name;
-    this.container   = this.settings.container ? $(this.settings.container) : null;
-    this.parent      = null; // parent window if exists
-    this.childList   = [];
 
-    if (this.settings.type == 'modal') {
+/**
+ *
+ * @param {Object} options
+ *
+ * @constructor
+ * @returns {jqWindowManager}
+ */
+$.jqWindowManager = function(options) {
+    if (!this.managers) {
+        this.managers = {};
+    }
+    if (!this.managers['default']) {
+        this.managers['default'] = new jqWindowManager(window, options);
+    }
+    return this.managers['default'];
+}
+
+/**
+ *
+ * @param {Object} container
+ * @param {object} options
+ *
+ * @constructor
+ */
+jqWindowManager = function(container, options) {
+    this.settings  = $.extend(true, {}, jqWindowManager.defaults, options);
+    this.container = container instanceof $ ? container : $(container);
+    this.windows   = [];
+    this.layers    = [];
+    this.listeners = new ListenerStorage();
+    this.logger    = new Logger({level : this.settings.logLevel});
+
+    var jqWM = this;
+    jqWM.container.isWindow = $.isWindow(container);
+    /*jqWM.container.bind('resize.jqwindow_container_resize', function() {
+        for (var i in jqWM.windows) {
+            jqWM.windows[i]._recountSizeAndPosition();
+        }
+    }); */
+}
+
+$.extend(jqWindowManager, {
+    defaults : {
+        logLevel          : 4, //1 - errors, 2 - warnings, 3 - info, 4 - debug
+        zIndexStart       : 1000,
+        overlayClass      : 'jqwindow_overlay',
+        persistentOverlay : false,
+    },
+    prototype : {
+        /**
+         * Add new window
+         *
+         * @param {String} name
+         * @param {Object} options
+         *
+         * @returns {jqWindow}
+         */
+        addWindow : function(name, options) {
+            var window = new jqWindow(name, this, options);
+            window.addEventListener([this, this._eventHandler]);
+            if (this.settings.logLevel >= 3) {
+                window.addEventListener([this.logger, this.logger._eventHandler]);
+            }
+            window.create()
+                  ._setId(this.getWindowCount() + 1)
+                  .focus();
+
+            this.windows.push(window);
+            return window;
+        },
+        /**
+         * Get window
+         *
+         * @param {jqWindow|String|Integer} window
+         *
+         * @returns {jqWindow|null}
+         */
+        getWindow : function(window) {
+            var windowId = jqWindowManager._getWindowIdFromMixed(window);
+            for (var i = 0, length = this.windows.length; i < length; i++) {
+                if (this.windows[i].getId() == windowId) {
+                    return this.windows[i];
+                }
+            }
+            return null;
+        },
+        /**
+         * Get window
+         *
+         * @param {String} name window name
+         *
+         * @returns {jqWindow|null}
+         */
+        getWindowByName : function(name) {
+            for (var i = 0, length = this.windows.length; i < length; i++) {
+                if (this.windows[i].getName() == name) {
+                    return this.windows[i];
+                }
+            }
+            return null;
+        },
+        /**
+         * Get count of windows
+         *
+         * @returns {Integer}
+         */
+        getWindowCount : function() {
+            return this.windows.length;
+        },
+        /**
+         * Get focused window
+         *
+         * @returns {jqWindow|null}
+         */
+        getFocusedWindow : function() {
+            if (this.layers.length) {
+                for (var i = this.layers.length - 1; i >= 0; i--) {
+                    if (this.layers[i] instanceof jqWindow) {
+                        return this.layers[i];
+                    }
+                }
+            }
+            return null;
+        },
+        /**
+         * Add event listener for any window
+         *
+         * If any listener return false, event will not be run
+         *
+         * @param {String|Function|Object} event - event type (before_show, after_show etc.) or listener (if need listen all events)
+         * @param {Function|Array} listener - example, function(){return true} or [new jqWindowManager(), new jqWindowManager()._eventHandler]
+         *
+         * @since version 0.2
+         *
+         * @returns {jqWindowManager}
+         */
+        addEventListener : function(event, listener) {
+            this.listeners.addListener(event, listener);
+            return this;
+        },
+        /**
+         * Focus window
+         *
+         * @param {jqWindow|Integer|String} window
+         *
+         * @inner
+         */
+        _focusWindow : function(window) {
+            if (!window instanceof jqWindow) {
+                window = this.getWindow(window);
+            }
+
+            if (window) {
+                var focusedWindow = this.getFocusedWindow();
+                if (window != focusedWindow) {
+                    if (window.getZindex()) {
+                        this._deleteLayer(window);
+                    }
+                    var windowZIndex = focusedWindow instanceof jqWindow ? focusedWindow.getZindex() + 2 : this.settings.zIndexStart;
+                    window._setZindex(windowZIndex);
+                    this.layers.push(window);
+                    if (focusedWindow instanceof jqWindow) {
+                        focusedWindow.blur();
+                    }
+                }
+            }
+        },
+        /**
+         * Delete window from layers
+         *
+         * @param {jqWindow|Integer|String} window
+         *
+         * @inner
+         */
+        _deleteLayer : function(window) {
+            if (!window instanceof jqWindow) {
+                window = this.getWindow(window);
+            }
+            if (window) {
+                for (var key in this.layers) {
+                    if (this.layers[key].getZindex() == window.getZindex()) {
+                        this.layers.splice(key, 1);
+                        break;
+                    }
+                }
+            }
+        },
+        /**
+         * Delete window
+         *
+         * @param {jqWindow|String|Integer} window
+         *
+         * @inner
+         *
+         * @returns {jqWindowManager}
+         */
+        _deleteWindow : function(window) {
+            if (window instanceof jqWindow) {
+                window = this.getWindow(window);
+            }
+            if (window) {
+                for (var key in this.windows) {
+                    if (this.windows[key].getId() == window.getId()) {
+                        this.windows.splice(key, 1);
+                        break;
+                    }
+                }
+
+                /*this.deleteLayer(window);
+                 var focusedWindow = this.getFocusedWindow();
+                 if (focusedWindow instanceof jqWindow) {
+                 focusedWindow.focus();
+                 }
+                 if (window.settings.overlayable) {
+                 for (var i = this.getWindowCount() - 1; i >= 0; i--) {
+                 if (this.windows[i] instanceof jqWindow && this.windows[i].settings.overlayable) {
+                 this.showOverlay(this.windows[i]);
+                 break;
+                 }
+                 if (this.settings.persistentOverlay && !i) {
+                 this.showOverlay(this.windows[i]);
+                 }
+                 }
+                 this.overlayableWindowCount--;
+                 }
+
+                 if (!this.overlayableWindowCount && !(this.settings.persistentOverlay && this.getWindowCount())) {
+                 this.hideOverlay();
+                 } */
+            }
+            return this;
+        },
+        /**
+         * Handler of windows event
+         *
+         * @event
+         * @inner
+         */
+        _eventHandler : function() {
+            return this.listeners.notify.apply(this.listeners, arguments);
+        },
+        /**
+         * Hide container scrollbar
+         *
+         * @inner
+         */
+        _hideContainerScrollbar : function() {
+            var container = this.container.isWindow ? $('body') : this.container;
+            if (!this.containerCssSave) {
+                this.containerCssSave = {};
+            }
+            this.containerCssSave.overflow = container.css('overflow');
+
+            container.css('overflow', 'hidden');
+            container.bind('scroll.jqwindow_hide_scroll', function(event) {
+                event.preventDefault();
+                event.returnValue = false;
+            });
+        },
+        /**
+         * Show container scrollbar
+         *
+         * @inner
+         */
+        _showContainerScrollbar : function() {
+            var container = this.container.isWindow ? $('body') : this.container;
+
+            container.css('overflow', this.containerCssSave.overflow);
+            container.unbind('scroll.jqwindow_hide_scroll');
+        }
+    },
+    /**
+     * Get window id from mixed data
+     *
+     * @param {jqWindow|Integer|String} data
+     *
+     * @inner
+     * @static
+     *
+     * @returns {Integer} window id
+     */
+    _getWindowIdFromMixed : function(data) {
+        var id = data;
+        if (typeof(data) == 'string' && data.substring(0, 9) == 'jqwindow_') {
+            id = data.substring(9, data.length);
+        } else if (data instanceof jqWindow) {
+            id = data.getId();
+        }
+        return id;
+    },
+
+});
+
+/**
+ * Create jqWindow object
+ *
+ * @param {String} name window name
+ * @param {jqWindowManager} manager
+ * @param {Object} options
+ *
+ * @constructor
+ */
+jqWindow = function(name, manager, options) {
+    this.settings    = $.extend(true, {}, jqWindow.defaults, options);
+    this.name        = name || 'unnamed';
+    this.manager     = manager;
+    this.listeners   = new ListenerStorage();
+
+    if (this.settings.modal) {
         this.settings.overlayable = true;
         this.settings.minimizable = false;
         this.settings.maximizable = false;
-        this.settings.resizeable = false;
+        this.settings.resizeable  = false;
+        this.settings.draggable   = false;
     }
-
-    this.init(parentWindow);
 };
 
-/**
- * Debug Levels
- *      5 - hook run messages
- *      6 - hook run params
- *
- */
-
-$.extend($.jqWindow, {
+$.extend(jqWindow, {
     defaults : {
-        type                     : 'normal', //window type [normal, modal, alert, confirm, prompt]
         style                    : 'jqwindow_normal jqwindow_padded', // window style [jqwindow_normal, jqwindow_basic, jqwindow_shadow, jqwindow_framed, jqwindow_masked, jqwindow_padded_basic, jqwindow_padded]
-        debug                    : true,
+
         title                    : '&nbsp;',
-        footerContent            : '',
-        container                : null,
+        footer                   : '',
+
+        minimizeButtonText       : 'Minimize',
+        maximizeButtonText       : 'Maximize',
+        closeButtonText          : 'Close',
+
+        scrollable               : true,
+        draggable                : true,
+        maximizable              : true,
+        closeable                : true,
+        resizeable               : true,
+        overlayable              : false,
+        modal                    : false,
+
         width                    : 400,
         height                   : 400,
         minWidth                 : 100,
@@ -60,14 +359,6 @@ $.extend($.jqWindow, {
         maxHeight                : 0,
         left                     : -1,
         top                      : -1,
-        scrollable               : true,
-        closeable                : true,
-        minimizable              : true,
-        maximizable              : true,
-        draggable                : true,
-        resizeable               : true,
-        overlayable              : false,
-        modal                    : false,
 
         allowSpadeNorth          : false, // Allow outstep north boudn of the container (or window) while dragging
         allowSpadeEast           : false, // Allow outstep east boudn of the container (or window) while dragging
@@ -80,1201 +371,804 @@ $.extend($.jqWindow, {
         // css classes
         windowClass                              : 'jqwindow',
         headerClass                              : 'jqwindow_header',
-        headerTitleClass                         : 'jqwindow_title',
+        titleClass                               : 'jqwindow_title',
+        actionBarClass                           : 'jqwindow_action_bar',
+        actionBarButtonClass                     : 'jqwindow_button',
+        maximizeButtonClass                      : 'jqwindow_maximize',
+        minimizeButtonClass                      : 'jqwindow_minimize',
+        closeButtonClass                         : 'jqwindow_close',
         footerClass                              : 'jqwindow_footer',
         bodyClass                                : 'jqwindow_body',
         contentClass                             : 'jqwindow_content',
-        overlayClass                             : 'jqwindow_overlay',
-        modalOverlayClass                        : 'jqwindow_modal_overlay',
-        headerActionBarClass                     : 'jqwindow_action_bar',
-        headerButtonClass                        : 'jqwindow_button',
-        headerCloseButtonClass                   : 'jqwindow_close',
         scrollableClass                          : 'jqwindow_scrollable',
-        headerMinimizeButtonClass                : 'jqwindow_minimize',
-        headerMaximizeButtonClass                : 'jqwindow_maximize',
-        headerCollapseButtonClass                : 'jqwindow_collapse',
-        headerExpandButtonClass                  : 'jqwindow_expand',
-        headerFoldingCollapseButtonClass         : 'jqwindow_folding_collapse',
-        headerFoldingExpandButtonClass           : 'jqwindow_folding_expand',
-        focusedClass                             : 'jqwindow_focus',
+        draggableClass                           : 'jqwindow_draggable',
+        focusClass                               : 'jqwindow_focus',
 
-        /* debug start */
-        // HOOK defaults
-        onBeforeShow                             : function(jqWindow) { return true; },
-        onAfterShow                              : function(jqWindow) { return true; },
-        onBeforeCreate                           : function()         { return true; },
-        onAfterCreate                            : function(jqWindow) { return true; },
-        onBeforeClose                            : function(jqWindow) { return true; },
-        onAfterClose                             : function()         { return true; },
-        onBeforeOverlayClick                     : function(jqWindow, overlay, event)         { return true; },
-        onAfterOverlayClick                      : function(jqWindow, overlay, event)         { return true; },
-        onBeforeResize                           : function(jqWindow, event, currentSizeAndPos) { return true; },
-        onResize                                 : function(jqWindow, event, currentSizeAndPos, originalSizeAndPos) { return true; },
-        onAfterResize                            : function(jqWindow, event, currentSizeAndPos, originalSizeAndPos) { return true; },
-        onBeforeScrollTo                         : function(jqWindow) { return true; },
-        onAfterScrollTo                          : function(jqWindow) { return true; },
-        onBeforeFocus                            : function(jqWindow) { return true; },
-        onAfterFocus                             : function(jqWindow) { return true; }
-        /* debug end */
+        modalOverlayClass                        : 'jqwindow_modal_overlay',
+        overlayClass                             : 'jqwindow_overlay',
     },
-
     prototype : {
-        /**
-         * Create window (@see create()),
-         * and register it in the window manager
-         */
-        init : function(parentWindow)
-        {
-            if (this.create()) {
-                this.setParent(parentWindow);
-
-                // @TODO - Currently top window can't be parent. What if i clicked to the link not in window?
-                if (!this.parent) {
-                    this.setParent(jqWindowManager.getLastLayer());
-                }
-
-                // Register window in manager registry
-                if (jqWindowManager.registerWindow(this)) {
-                    this.window.attr('id', 'jqwindow_' + this.getId());
-                }
-
-                this.settings.onAfterCreate(this);
-            }
-        },
-
-        /**
-         * Add child window
-         *
-         * @param jqWindow $.jqWindow
-         */
-        addChild : function(jqWindow)
-        {
-            if (jqWindow && (typeof(jqWindow) == 'string' || typeof(jqWindow) == 'integer')) {
-                jqWindow = jqWindowManager.getWindow(jqWindow);
-            }
-            if (jqWindow instanceof $.jqWindow) {
-                this.childList.push(jqWindow);
-            }
-        },
-
-        deleteChild : function(jqWindow)
-        {
-            jqWindow = jqWindowManager.getWindow(jqWindow);
-            if (jqWindow instanceof $.jqWindow) {
-                for (var key in this.childList) {
-                    if (this.childList[key] == jqWindow) {
-                        this.childList.splice(key, 1);
-                    }
-                }
-            }
-        },
-
-        /**
-         * Get childs count
-         *
-         * @return integer
-         */
-        getChildCount : function()
-        {
-            return this.childList.length;
-        },
-
-        /**
-         * Returns parent window object (or null)
-         *
-         * @return null|$.jqWindow
-         */
-        getParent : function()
-        {
-            return this.parent;
-        },
-
-        /**
-         * Set parent window from mixed var
-         *
-         * @param parentWindow
-         */
-        setParent : function(parentWindow)
-        {
-            if (parentWindow && (typeof(parentWindow) == 'string' || typeof(parentWindow) == 'integer')) {
-                parentWindow = jqWindowManager.getWindow(parentWindow);
-            }
-
-            if (parentWindow instanceof $.jqWindow && this.parent != parentWindow) {
-                if (this.parent) {
-                    this.parent.deleteChild(this);
-                }
-                parentWindow.addChild(this);
-                this.parent = parentWindow;
-            }
-        },
-
-        /**
-         * Close parent window
-         *
-         * @todo need to close all parents or some defined count of parents :)
-         *
-         * @param itemsToClose How many parents need to close
-         * @return boolean always true
-         */
-        closeParent : function(itemsToClose)
-        {
-            if (!itemsToClose) {
-                itemsToClose = 1;
-            }
-
-            var closedCount = 0;
-            var item = this;
-            while (item = item.getParent()) {
-                if (closedCount >= itemsToClose) {
-                    break;
-                }
-                item.close();
-                closedCount++;
-            }
-
-            return true;
-        },
-
         /**
          * At this point we create DOM structure
          * for new window, but don't show it
          *
-         * At same time we bind all events on
-         * control elements
+         * Window show by @see jqWindow.show() method
          *
-         * Window show by @see show() method
+         * @returns {jqWindow}
          */
-        create: function()
-        {
-            // if window exists (second call) or BeforeCreate return false
+        create : function() {
+            var jqW = this;
+            // if window exists (second call) or any listener "before_create" return false
             // value we don't create DOM structure
-            if (this.window || !this.settings.onBeforeCreate()) {
-                return false;
+            if (jqW.window || !jqW.listeners.notify(ListenerStorage.events.beforeCreate, jqW)) {
+                return jqW;
             }
 
-            var jqWindow = this;
-            var windowContainer = this.container ? this.container : $('body');
+            var container = !jqW.manager.container.isWindow ? jqW.manager.container : $('body');
 
             // create common DOM-structure
-            this.window = $('<div></div>').addClass(this.settings.windowClass)
-                                          .addClass(this.settings.style)
-                                          .attr('name', this.name)
-                                          .appendTo(windowContainer);
-
-            $.jqWindow.recountWindowSizeAndPosition(this);
+            jqW.window = $('<div></div>').addClass(jqW.settings.windowClass)
+                                         .addClass(jqW.settings.style)
+                                         .attr('name', jqW.name)
+                                         .bind('mousedown.jqwindow_focus', function() {
+                                            jqW.focus();
+                                         })
+                                         .appendTo(container);
 
             // Scrollable setting just add scrollableClass
             // to main DOM element of window
-            if (this.settings.scrollable) {
-                this.window.addClass(this.settings.scrollableClass);
+            if (jqW.settings.scrollable) {
+                jqW.window.addClass(jqW.settings.scrollableClass);
             }
 
-            /**
-             * Window focus/blur
-             *
-             * @todo need to add hooks onBeforeFocus()/onAfterFocus()/onBeforeBlur()/onAfterBlur()
-             */
-            this.window.mousedown(function() {
-                jqWindow.focus();
-            });
-
             // Create and append header to window
-            this.header = $('<div></div>').addClass(this.settings.headerClass)
-                                           .appendTo(this.window);
+            jqW.header = $('<div></div>').addClass(jqW.settings.headerClass)
+                                         .appendTo(jqW.window);
 
-            if (this.settings.draggable) {
-                this.header.addClass('draggable')
+            if (jqW.settings.draggable) {
+                jqW.header.addClass(jqW.settings.draggableClass)
                            .bind('mousedown.jqwindow_drag', function(event) {
-                                jqWindow.window.addClass('drag');
-                                var mousePos = {x : event.pageX - parseInt(jqWindow.window.offset().left),
-                                                y : event.pageY - parseInt(jqWindow.window.offset().top)};
-                                var i = 0;
-                                $(window).bind('mousemove.jqwindow_drag', function(event) {
-                                    jqWindow.drag(mousePos, event);
-                                    event.preventDefault();
-                                });
+                                if (jqW.listeners.notify(ListenerStorage.events.beforeDrag, jqW)) {
+                                    var startPosX = event.pageX - jqW.window.offset().left;
+                                    var startPosY = event.pageY - jqW.window.offset().top;
+                                    $(window).bind('mousemove.jqwindow_drag', function(event) {
+                                        var posX = event.pageX - startPosX;
+                                        var posY = event.pageY - startPosY;
+                                        jqW._drag(posX, posY);
+                                        event.preventDefault();
+                                    });
+                                    $(window).bind('mouseup.jqwindow_drag', function() {
+                                        $(window).unbind('mousemove.jqwindow_drag');
+                                        $(window).unbind('mouseup.jqwindow_drag');
+                                        jqW.listeners.notify(ListenerStorage.events.afterDrag, jqW);
+                                    });
+                                }
                                 event.preventDefault();
                            });
-                $(window).bind('mouseup.jqwindow_drag', function(event) {
-                    jqWindow.window.removeClass('drag');
-                    $(window).unbind('mousemove.jqwindow_drag');
-                });
             }
 
             // create window header action bar
-            this.headerActionBar = $('<span></span>').addClass(this.settings.headerActionBarClass)
-                                                     .appendTo(this.header);
+            jqW.actionBar = $('<span></span>').addClass(this.settings.actionBarClass)
+                                              .appendTo(this.header);
 
 
             // create maximize/minimize button
-            if (this.settings.maximizable) {
-                $('<a href="javascript:void(0)"></a>').appendTo(this.headerActionBar)
-                                                      .addClass(this.settings.headerButtonClass + ' ' + this.settings.headerMaximizeButtonClass)
+            if (jqW.settings.maximizable) {
+                $('<a href="javascript:void(0)"></a>').appendTo(jqW.actionBar)
+                                                      .addClass(jqW.settings.actionBarButtonClass + ' ' + jqW.settings.maximizeButtonClass)
                                                       .click(function() {
-                                                          jqWindow.maximize();
+                                                            jqW.maximize();
                                                       })
-                                                      .append('<em>Maximize</em>');
+                                                      .append('<em>' + jqW.settings.maximizeButtonText + '</em>');
 
-                $('<a href="javascript:void(0)"></a>').appendTo(this.headerActionBar)
-                                                      .addClass(this.settings.headerButtonClass + ' ' + this.settings.headerMinimizeButtonClass)
+                $('<a href="javascript:void(0)"></a>').appendTo(jqW.actionBar)
+                                                      .addClass(jqW.settings.actionBarButtonClass + ' ' + jqW.settings.minimizeButtonClass)
                                                       .click(function() {
-                                                          jqWindow.minimize();
+                                                            jqW.minimize();
                                                       })
                                                       .hide()
-                                                      .append('<em>Minimize</em>');
+                                                      .append('<em>' + jqW.settings.minimizeButtonText + '</em>');
+                jqW.header.dblclick(function() {
+                    if (jqW.maximized) {
+                        jqW.minimize();
+                    } else {
+                        jqW.maximize();
+                    }
+                });
             }
 
             // create close button
-            if (this.settings.closeable) {
-                $('<a href="javascript:void(0)"></a>').appendTo(this.headerActionBar)
-                                                      .addClass(this.settings.headerButtonClass + ' ' + this.settings.headerCloseButtonClass)
+            if (jqW.settings.closeable) {
+                $('<a href="javascript:void(0)"></a>').appendTo(jqW.actionBar)
+                                                      .addClass(jqW.settings.actionBarButtonClass + ' ' + jqW.settings.closeButtonClass)
                                                       .click(function() {
-                                                          jqWindow.close();
+                                                            jqW.close();
                                                       })
-                                                      .append('<em>Close</em>');
-            }
-/*
-            if (settings.minimizable) {
-                headerActionBar.append("<div title='minimize window' class='minimize button'></div>");
-                headerActionBar.children('.minimize').click(function() {
-                    minimize();
-                });
-            }
-
-            headerActionBar.children('.button').dblclick(function() {
-                return false;
-            });*/
-
-            if (this.settings.maximizable) {
-                this.header.dblclick(function() {
-                    if (jqWindow.maximized) {
-                        jqWindow.minimize();
-                    } else {
-                        jqWindow.maximize();
-                    }
-                });
+                                                      .append('<em>' + jqW.settings.closeButtonText + '</em>');
             }
 
             // create window title
-            this.title = $('<span></span>').addClass(this.settings.headerTitleClass)
-                                           .html(this.settings.title)
-                                           .width(this.header.width() - this.headerActionBar.width() - 5)
-                                           .appendTo(this.header);
+            jqW.title = $('<span></span>').addClass(jqW.settings.titleClass)
+                .html(jqW.settings.title)
+                .width(jqW.header.width() - jqW.actionBar.width() - 5)
+                .appendTo(jqW.header);
 
-            if (this.settings.footerContent) {
-                this.footer = $('<div></div>').addClass(this.settings.footerClass)
-                                              .html(this.settings.footerContent)
-                                              .appendTo(this.window);
+            // create footer
+            if (jqW.settings.footer) {
+                jqW.footer = $('<div></div>').addClass(jqW.settings.footerClass)
+                                             .html(jqW.settings.footer)
+                                             .appendTo(jqW.window);
             }
 
-            this.content = $('<div></div>').addClass(this.settings.contentClass)
-                                           .addClass('loading')
-                                           .click(function() {
-                                                jqWindow.content.removeClass('loading');
-                                           })
-                                           .appendTo(this.window);
-            var contentHeight = this.window.height() - this.header.outerHeight(true) - (this.content.outerHeight(true) - this.content.height());
-            this.content.wrap($('<div></div>').addClass(this.settings.bodyClass)
-                                              .height(contentHeight));
-            this.body = this.content.parent();
+            jqW.content = $('<div></div>').addClass(jqW.settings.contentClass)
+                                          .appendTo(jqW.window);
+
+            var contentHeight = jqW.window.height() - jqW.header.outerHeight(true) - (jqW.content.outerHeight(true) - jqW.content.height());
+            jqW.content.wrap($('<div></div>')
+                       .addClass(jqW.settings.bodyClass)
+                       .height(contentHeight));
+            jqW.body = jqW.content.parent();
+
 
             // Scroll to anchor
-            this.content.delegate('a[href*="#"]', 'click', function(event) {
+            /*jqW.content.delegate('a[href*="#"]', 'click', function(event) {
                 var url = $(this).attr("href");
                 var anchorName = url.substr(url.search('#') + 1);
-                if (anchorName.length && jqWindow.settings.onBeforeScrollTo(jqWindow)) {
-                    var scrollTop = $('[name="' + anchorName + '"]').offset().top - jqWindow.body.offset().top + jqWindow.body.scrollTop();
-                    jqWindow.body.animate({scrollTop: scrollTop}, jqWindow.settings.scrollToDuration, jqWindow.settings.scrollToEasing, function() {
-                        jqWindow.settings.onAfterScrollTo(jqWindow);
+                if (anchorName.length && jqW.settings.onBeforeScrollTo(jqWindow)) {
+                    var scrollTop = $('[name="' + anchorName + '"]').offset().top - jqW.body.offset().top + jqW.body.scrollTop();
+                    jqW.body.animate({scrollTop: scrollTop}, jqW.settings.scrollToDuration, jqW.settings.scrollToEasing, function() {
+                        jqW.settings.onAfterScrollTo(jqW);
                     });
                 }
                 event.preventDefault();
-            });
+            });  */
 
-            if (this.settings.resizeable) {
+            if (jqW.settings.resizeable) {
+                var endResizeFunction = function() {
+                    $(window).unbind('mousemove.jqwindow_resize');
+                    $(window).unbind('mouseup.jqwindow_resize');
+                    jqW.listeners.notify(ListenerStorage.events.afterResize, jqW);
+                }
                 $('<div></div>').css({position : 'absolute',
-                                      top    : 0,
-                                      right   : 0,
-                                      cursor : 'w-resize',
-                                      width  : '3px',
-                                      height : this.window.height()})
+                                      top      : 0,
+                                      right    : 0,
+                                      cursor   : 'w-resize',
+                                      width    : '3px',
+                                      height   : '100%'})
                                 .bind('mousedown.jqwindow_resize', function(event) {
-                                    if (!jqWindow.maximized
-                                        && (!jqWindow.settings.onBeforeResize
-                                            || jqWindow.settings.onBeforeResize(jqWindow, event, jqWindow.getCurrentSizeAndPos()))
-                                    ) {
-                                        jqWindow.window.addClass('resize');
-                                        jqWindow.originalSizeAndPos = jqWindow.getCurrentSizeAndPos();
+                                        if (!jqW.maximized && jqW.listeners.notify(ListenerStorage.events.beforeResize, jqW)) {
+                                            var windowOffsetLeft = jqW.window.offset().left;
+                                            $(window).bind('mousemove.jqwindow_resize', function(event) {
+                                                var width = event.pageX - windowOffsetLeft;
+                                                jqW._resize(width, null);
+                                                event.preventDefault();
+                                            });
+                                            $(window).bind('mouseup.jqwindow_resize', endResizeFunction);
+                                        }
+                                        event.preventDefault();
+                                })
+                                .appendTo(this.window);
+                $('<div></div>').css({position : 'absolute',
+                                      bottom   : 0,
+                                      left     : 0,
+                                      cursor   : 's-resize',
+                                      width    : '100%',
+                                      height   : '5px'})
+                                .bind('mousedown.jqwindow_resize', function(event) {
+                                        if (!jqW.maximized && jqW.listeners.notify(ListenerStorage.events.beforeResize, jqW)) {
+                                            var windowOffsetTop = jqW.window.offset().top;
+                                            $(window).bind('mousemove.jqwindow_resize', function(event) {
+                                                var height = event.pageY - windowOffsetTop;
+                                                jqW._resize(null, height);
+                                                event.preventDefault();
+                                            });
+                                            $(window).bind('mouseup.jqwindow_resize', endResizeFunction);
+                                        }
+                                        event.preventDefault();
+                                })
+                                .appendTo(this.window);
+                $('<div></div>').css({position : 'absolute',
+                                      bottom   : 0,
+                                      right    : 0,
+                                      width    : '5px',
+                                      height   : '5px',
+                                      cursor   : 'se-resize'})
+                                .bind('mousedown.jqwindow_resize', function(event) {
+                                    if (!jqW.maximized && jqW.listeners.notify(ListenerStorage.events.beforeResize, jqW)) {
+                                        var windowOffsetLeft = jqW.window.offset().left;
+                                        var windowOffsetTop = jqW.window.offset().top;
                                         $(window).bind('mousemove.jqwindow_resize', function(event) {
-                                            if (jqWindow.settings.onResize(jqWindow, event, jqWindow.getCurrentSizeAndPos(), jqWindow.originalSizeAndPos)) {
-                                                jqWindow.resize(event, 'east');
-                                            }
+                                            var width = event.pageX - windowOffsetLeft;
+                                            var height = event.pageY - windowOffsetTop;
+                                            jqW._resize(width, height);
                                             event.preventDefault();
                                         });
+                                        $(window).bind('mouseup.jqwindow_resize', endResizeFunction);
                                     }
                                     event.preventDefault();
                                 })
                                 .appendTo(this.window);
+                /*
+                // Реализация оставлена до лучших времен
                 $('<div></div>').css({position : 'absolute',
-                                      bottom : 0,
-                                      left   : 0,
-                                      cursor : 's-resize',
-                                      width  : this.window.width(),
-                                      height : '5px'})
+                                      left     : 0,
+                                      top      : 0,
+                                      width    : '5px',
+                                      height   : jqW.window.height(),
+                                      cursor   : 'w-resize'})
                                 .bind('mousedown.jqwindow_resize', function(event) {
-                                    if (!jqWindow.maximized
-                                        && (!jqWindow.settings.onBeforeResize
-                                            || jqWindow.settings.onBeforeResize(jqWindow, event, jqWindow.getCurrentSizeAndPos()))
-                                    ) {
-                                        jqWindow.window.addClass('resize');
-                                        jqWindow.originalSizeAndPos = jqWindow.getCurrentSizeAndPos();
+                                    if (!jqW.maximized && jqW.listeners.notify(ListenerStorage.events.beforeResize, jqW)) {
+                                        var startPosX = event.pageX;
+                                        var windowWidth = jqW.window.width();
+                                        var maxPosX = jqW.window.offset().left + jqW.window.outerWidth(true) - jqW.settings.minWidth;
                                         $(window).bind('mousemove.jqwindow_resize', function(event) {
-                                            if (jqWindow.settings.onResize(jqWindow, event, jqWindow.getCurrentSizeAndPos(), jqWindow.originalSizeAndPos)) {
-                                                jqWindow.resize(event, 'south');
+                                            var width = startPosX - event.pageX + windowWidth;
+                                            var posX = event.pageX;
+                                            posX = posX > maxPosX ? maxPosX : posX;
+                                            if (posX < maxPosX) {
+                                                jqW._drag(posX, null);
                                             }
+                                            jqW._resize(width, null);
                                             event.preventDefault();
                                         });
+                                        $(window).bind('mouseup.jqwindow_resize', endResizeFunction);
                                     }
                                     event.preventDefault();
                                 })
-                                .appendTo(this.window);
-                $('<div></div>').css({position : 'absolute',
-                                      bottom : 0,
-                                      right  : 0,
-                                      width  : '5px',
-                                      height : '5px',
-                                      cursor : 'se-resize'})
-                                .bind('mousedown.jqwindow_resize', function(event) {
-                                    if (!jqWindow.maximized
-                                        && (!jqWindow.settings.onBeforeResize
-                                            || jqWindow.settings.onBeforeResize(jqWindow, event, jqWindow.getCurrentSizeAndPos()))
-                                    ) {
-                                        jqWindow.window.addClass('resize');
-                                        jqWindow.originalSizeAndPos = jqWindow.getCurrentSizeAndPos();
-                                        $(window).bind('mousemove.jqwindow_resize', function(event) {
-                                            if (jqWindow.settings.onResize(jqWindow, event, jqWindow.getCurrentSizeAndPos(), jqWindow.originalSizeAndPos)) {
-                                                jqWindow.resize(event, 'south-east');
-                                            }
-                                            event.preventDefault();
-                                        });
-                                    }
-                                    event.preventDefault();
-                                })
-                                .appendTo(this.window);
-                $(window).bind('mouseup.jqwindow_resize', function(event) {
-                    if (jqWindow.maximized) {
-                        return;
-                    }
-;;;                 if (jqWindow.settings.debug) {
-;;;                     jqWindowManager.log("onAfrterResize: '" + jqWindow.getName() + "' #" + jqWindow.getId() , 5);
-;;;                     jqWindowManager.log("onAfterResize param currentSizeAndPos:", 6);
-;;;                     jqWindowManager.log(jqWindow.getCurrentSizeAndPos(), 6);
-;;;                     jqWindowManager.log("onAfterResize param originalSizeAndPos:", 6);
-;;;                     jqWindowManager.log(jqWindow.originalSizeAndPos, 6);
-;;;                 }
-
-                    if (jqWindow.settings.onAfterResize(jqWindow, event, jqWindow.getCurrentSizeAndPos(), jqWindow.originalSizeAndPos)) {
-                        jqWindow.window.removeClass('resize');
-                        $(window).unbind('mousemove.jqwindow_resize');
-                        delete jqWindow.originalSizeAndPos;
-                    }
-                });
+                                .appendTo(this.window); */
             }
 
-            this.window.hide();
+            //jqW._recountSizeAndPosition();
+            jqW._resize(jqW.settings.width, jqW.settings.height);
+            var posX = jqW.settings.left != -1 ? jqW.settings.left : 'center';
+            var posY = jqW.settings.top != -1 ? jqW.settings.top : 'middle';
+            jqW._drag(posX, posY);
 
-            return true;
+            jqW.window.hide();
+
+            jqW.listeners.notify(ListenerStorage.events.afterCreate, jqW);
+            return jqW;
         },
-
         /**
-         * Show the window.
+         * Show the window
          *
-         * if BeforeShow hook return false,
-         * window will not be shown, and
-         * AfterShow will not be run
+         * @returns {jqWindow}
          */
-        show : function()
-        {
-            if (this.settings.onBeforeShow(this)) {
-;;;             if (this.settings.debug) {
-;;;                  jqWindowManager.log("Show window: '" + this.getName() + "' #" + this.getId() , 5);
-;;;             }
+        show : function() {
+            if (this.listeners.notify(ListenerStorage.events.beforeShow, this)) {
                 this.window.show();
-                this.settings.onAfterShow(this);
+                this.listeners.notify(ListenerStorage.events.afterShow, this);
             }
+            return this;
         },
-
         /**
-         * Close the window
-         *
-         * You must watch for close functionality by youself
-         * if you redefine this method in options!
-         *
-         * You can use this.close() in your method to close window
-         *
-         * False value, returned by BeforeClose,  prevents closing window
-         *
-         * !!! Important !!!
-         * Remember: Close method also does next things:
-         *  - it removes window from manager registry
-         *  - hides overlay layer
-         *
-         *  @return boolean always true
+         * Close window
          */
-        close : function()
-        {
-            if (this.settings.onBeforeClose(this)) {
+        close : function() {
+            if (this.listeners.notify(ListenerStorage.events.beforeClose, this)) {
+                this.manager._deleteWindow(this);
                 this.window.remove();
-                jqWindowManager.removeWindow(this.getId());
-                if (this.getParent()) {
-                    this.getParent().deleteChild(this.getId());
-                }
-                if (this.getChildCount()) {
-                    $.each(this.childList, function(key, jqWindow) {
-                        jqWindow.parent = null;
-                    })
-                }
-
-                this.settings.onAfterClose();
+                delete this;
+                this.listeners.notify(ListenerStorage.events.afterClose);
             }
-            return true;
         },
-
-        /**
-         * Window drag
-         *
-         * @param mousePos mouse position on the screen (browser window)
-         * @param event event object
-         */
-        drag : function (mousePos, event)
-        {
-            event = event ? event : window.event;
-            var posX = event.pageX - mousePos.x,
-                posY = event.pageY - mousePos.y;
-
-            // We allow drag window only within its territories (container)
-            if (!this.container) {
-                // If container  is not defined we can drag window within the screen (browser window)
-                var screenDimensions = $.jqWindow.getBrowserScreenDimensions();
-                var scrollPosition = $.jqWindow.getBrowserScrollPosition();
-            }
-            if (!this.settings.allowSpadeWest) {
-                var minX = this.container ? this.container.offset().left : scrollPosition.x;
-            } else {
-                var minX = -1;
-            }
-            if (!this.settings.allowSpadeNorth) {
-                var minY = this.container ? this.container.offset().top : scrollPosition.y;
-            } else {
-                var minY = -1;
-            }
-            if (!this.settings.allowSpadeEast) {
-                var maxX = this.container ? this.container.offset().left + this.container.width() - this.window.outerWidth(true)
-                                          : scrollPosition.x + screenDimensions.width - this.window.outerWidth(true);
-            } else {
-                var maxX = -1;
-            }
-            if (!this.settings.allowSpadeSouth) {
-                var maxY = this.container ? this.container.offset().top + this.container.height() - this.window.outerHeight(true)
-                                          : scrollPosition.y + screenDimensions.height - this.window.outerHeight(true);
-            } else {
-                var maxY = -1;
-            }
-
-            posX = (minX >= 0 && posX <= minX) ? minX : ((maxX >= 0 && posX >= maxX) ? maxX : posX);
-            posY = (minY >= 0 && posY <= minY) ? minY : ((maxY >= 0 && posY >= maxY) ? maxY : posY);
-
-            this.window.css({
-                top  : posY,
-                left : posX
-            });
-        },
-
-        resize : function (event, direction)
-        {
-            event = event ? event : window.event;
-
-            var screenDimensions = $.jqWindow.getBrowserScreenDimensions();
-            var scrollPosition = $.jqWindow.getBrowserScrollPosition();
-            if (direction == 'south-east' || direction == 'east') {
-                var width = event.pageX - this.window.offset().left;
-                var minWidth = this.settings.minWidth;
-                var maxWidth = this.settings.maxWidth ? this.settings.maxWidth : (this.container ? this.container.width() : screenDimensions.width - (this.window.offset().left - scrollPosition.x));
-                width = width < minWidth ? minWidth : (width > maxWidth ? maxWidth : width);
-                this.window.width(width);
-            }
-            if (direction == 'south-east' || direction == 'south') {
-                var height = event.pageY - this.window.offset().top;
-                var minHeight = this.settings.minHeight;
-                var maxHeight = this.settings.maxHeight ? this.settings.maxHeight : (this.container ? this.container.height() : screenDimensions.height - (this.window.offset().top - scrollPosition.y));
-                height = height < minHeight ? minHeight : (height > maxHeight ? maxHeight : height);
-                this.window.height(height);
-            }
-            $.jqWindow.recountSizeWindowItems(this);
-        },
-
-        maximize : function()
-        {
-;;;         if (this.settings.debug) {
-;;;             jqWindowManager.log("Maximize: '" + this.getName() + "' #" + this.getId() , 5);
-;;;         }
-
-            $.jqWindow.maximize(this);
-        },
-
-        minimize : function()
-        {
-            if (!this.container) {
-                $.jqWindow.showBrowserScrollbar();
-            }
-
-            if (this.windowSaveParams) {
-                this.window.css({
-                    width	: this.windowSaveParams.width,
-                    height	: this.windowSaveParams.height,
-                    top		: this.windowSaveParams.y,
-                    left	: this.windowSaveParams.x
-                });
-            }
-            this.headerActionBar.children('.' + this.settings.headerMaximizeButtonClass).show();
-            this.headerActionBar.children('.' + this.settings.headerMinimizeButtonClass).hide();
-            this.maximized = false;
-
-            $.jqWindow.recountSizeWindowItems(this);
-        },
-
         /**
          * Focus window
+         *
+         * @returns {jqWindow}
          */
-        focus : function()
-        {
-            if (!this.settings.onBeforeFocus || this.settings.onBeforeFocus(this)) {
-                jqWindowManager.focusWindow(this);
+        focus : function() {
+            if (this.listeners.notify(ListenerStorage.events.beforeFocus, this)) {
+                this.manager._focusWindow(this);
+                this.window.addClass(this.settings.focusClass);
+                this.listeners.notify(ListenerStorage.events.afterFocus, this);
             }
-            if (this.settings.onAfterFocus) {
-                this.settings.onAfterFocus(this);
+            return this;
+        },
+        /**
+         * Blur window
+         *
+         * @returns {jqWindow}
+         */
+        blur : function() {
+            if (this.listeners.notify(ListenerStorage.events.beforeBlur, this)) {
+                this.window.removeClass(this.settings.focusClass);
+                this.listeners.notify(ListenerStorage.events.afterBlur, this);
             }
+            return this;
         },
-
         /**
-         * Set content of the window
+         * Maximize window
          *
-         * @param content
+         * @returns {jqWindow}
          */
-        setContent : function(content)
-        {
-            this.content.html(content);
-        },
+        maximize : function() {
+            if (this.listeners.notify(ListenerStorage.events.beforeMaximize, this)) {
+                this.manager._hideContainerScrollbar();
+                var offset = this.getContainer().offset();
+                offset = offset ? offset : {left : 0, top : 0};
 
+                /*jqWindow.windowSaveParams = {width  : jqWindow.window.width(),
+                    height : jqWindow.window.height(),
+                    x      : jqWindow.window.offset().left,
+                    y      : jqWindow.window.offset().top}; */
+
+                this.window.css({
+                    width    : this.getContainer().width(),
+                    height   : this.getContainer().height(),
+                    top      : offset.left,
+                    left     : offset.top
+                });
+
+                this.actionBar.children('.' + this.settings.maximizeButtonClass).hide();
+                this.actionBar.children('.' + this.settings.minimizeButtonClass).show();
+                this.maximized = true;
+
+                //this.recountSizeWindowItems(jqWindow);
+                this.listeners.notify(ListenerStorage.events.afterMaximize, this);
+            }
+            return this;
+        },
         /**
-         * Set window title
+         * Minimize window
          *
-         * @param title
+         * @returns {jqWindow}
          */
-        setTitle : function(title)
-        {
-            this.header.children('.' + this.settings.headerTitleClass).html(title);
-        },
+        minimize : function() {
+            if (this.listeners.notify(ListenerStorage.events.beforeMinimize, this)) {
+                this.manager._showContainerScrollbar();
 
+                this.window.css({
+                    width    : this.width,
+                    height   : this.height,
+                    top      : this.top,
+                    left     : this.left
+                });
+
+                this.actionBar.children('.' + this.settings.maximizeButtonClass).show();
+                this.actionBar.children('.' + this.settings.minimizeButtonClass).hide();
+                this.maximized = false;
+
+                //this.recountSizeWindowItems(jqWindow);
+                this.listeners.notify(ListenerStorage.events.afterMinimize, this);
+            }
+            return this;
+        },
         /**
-         * Get window name (it's not an id, and it's not a window title)
+         * Drag window
          *
-         * @return string
+         * @param {Integer|String} posX
+         * @param {Integer|String} posY
+         *
+         * @returns {jqWindow}
          */
-        getName : function()
-        {
-            return this.name;
+        drag : function(posX, posY) {
+            if (this.listeners.notify(ListenerStorage.events.beforeDrag, this)) {
+                this._drag(posX, posY);
+                this.listeners.notify(ListenerStorage.events.afterDrag, this);
+            }
+            return this;
         },
+        /**
+         * Drag window
+         *
+         * @param {Integer|String} posX
+         * @param {Integer|String} posY
+         *
+         * @inner
+         */
+        _drag : function(posX, posY) {
+            var newPosition = {};
+            if (posX || posX == 0) {
+                if (posX == 'left') {
+                    posX = 0;
+                } else if (posX == 'right') {
+                    posX = this.getContainer().width() - this.window.width();
+                } else if (posX == 'center') {
+                    posX = (this.getContainer().width() - this.window.width()) / 2
+                } else if (posX[posX.length - 1] == '%') {
+                    posX = parseInt(posX.substr(0, posX.length - 1)) * this.getContainer().width() / 100;
+                }
+                if (!this.settings.allowSpadeWest) {
+                    var minX = this.getContainer().isWindow ? 0 : this.getContainer().offset().left;
+                } else {
+                    var minX = -1;
+                }
+                if (!this.settings.allowSpadeEast) {
+                    var maxX = this.getContainer().isWindow ? Math.max($('body').width(), this.getContainer().width()) : this.getContainer().width() + this.getContainer().offset().left;
+                    maxX -= this.window.outerWidth(true);
+                } else {
+                    var maxX = -1;
+                }
+                posX = Math.max(minX, posX);
+                posX = maxX >= 0 ? Math.min(maxX, posX) : posX;
+                newPosition.left = posX;
+            }
 
+            if (posY || posY == 0) {
+                if (posY == 'top') {
+                    posY = 0;
+                } else if (posY == 'bottom') {
+                    posY = this.getContainer().height() - this.window.height();
+                } else if (posY == 'middle') {
+                    posY = (this.getContainer().height() - this.window.height()) / 2
+                } else if (posY[posY.length - 1] == '%') {
+                    posY = parseInt(posY.substr(0, posY.length - 1)) * this.getContainer().height() / 100;
+                }
+                if (!this.settings.allowSpadeNorth) {
+                    var minY = this.getContainer().isWindow ? 0 : this.getContainer().offset().top;
+                } else {
+                    var minY = -1;
+                }
+                if (!this.settings.allowSpadeSouth) {
+                    var maxY = this.getContainer().isWindow ? Math.max($('body').height(), this.getContainer().height()) : this.getContainer().height() + this.getContainer().offset().top;
+                    maxY -= this.window.outerHeight(true);
+                } else {
+                    var maxY = -1;
+                }
+                posY = Math.max(minY, posY);
+                posY = maxY >= 0 ? Math.min(maxY, posY) : posY;
+                newPosition.top = posY;
+            }
+
+            this.window.css(newPosition);
+        },
+        /**
+         * Resize window
+         *
+         * @param {String|Integer|null} width new width
+         * @param {String|Integer|null} height new height
+         *
+         * @returns {jqWindow}
+         */
+        resize : function (width, height) {
+            if (this.listeners.notify(ListenerStorage.events.beforeResize, this)) {
+                this._resize(width, height);
+                this.listeners.notify(ListenerStorage.events.afterResize, this);
+            }
+            return this;
+        },
+        /**
+         * Resize window
+         *
+         * @param {String|Integer|null} width new width
+         * @param {String|Integer|null} height new height
+         *
+         * @inner
+         *
+         * @returns {Boolean} true - if size of window was changed
+         */
+        _resize : function (width, height) {
+            var result = false;
+            if (width) {
+                var containerWidth = this.getContainer().width();
+                if (width[width.length - 1] == '%') {
+                    width = parseInt(width.substr(0, width.length - 1)) * containerWidth / 100;
+                }
+                /*if (width > containerWidth) {
+                 width = containerWidth;
+                 }   */
+                if (this.settings.minWidth > 0 && width < this.settings.minWidth) {
+                    width = this.settings.minWidth;
+                } else if (this.settings.maxWidth > 0 && width > this.settings.maxWidth) {
+                    width = this.settings.maxWidth;
+                }
+                if (this.window.width() != width) {
+                    this.window.width(width);
+                    var titleWidth = this.header.width() - this.actionBar.width() - 5;
+                    this.title.width(titleWidth);
+                    result = true;
+                }
+            }
+            if (height) {
+                var containerHeight = this.getContainer().height();
+                if (height[height.length - 1] == '%') {
+                    height = parseInt(height.substr(0, height.length - 1)) * containerHeight / 100;
+                }
+                /*if (height > containerHeight) {
+                 height = containerHeight;
+                 }  */
+                if (this.settings.minHeight > 0 && height < this.settings.minHeight) {
+                    height = this.settings.minHeight;
+                } else if (this.settings.maxHeight > 0 && height > this.settings.maxHeight) {
+                    height = this.settings.maxHeight;
+                }
+                if (this.window.height() != height) {
+                    this.window.height(height);
+                    var contentHeight = this.window.height() - this.header.outerHeight(true) - (this.content.outerHeight(true) - this.content.height());
+                    this.body.height(contentHeight);
+                    result = true;
+                }
+            }
+            return result;
+        },
+        /**
+         * Add event listener for window
+         *
+         * If any listener return false, event will not be run
+         *
+         * @param {String|Function|Object} event event type (before_show, after_show etc.) or listener (if need listen all events)
+         * @param {Function|Array} listener example, function(){return true} or [new jqWindowManager(), new jqWindowManager()._eventHandler]
+         *
+         * @since version 0.2
+         *
+         * @returns {jqWindow}
+         */
+        addEventListener : function(event, listener) {
+            this.listeners.addListener(event, listener);
+            return this;
+        },
         /**
          * Get window unique id
          *
-         * @return integer
+         * @returns {Integer}
          */
-        getId : function()
-        {
+        getId : function() {
             return this.id;
         },
-
+        /**
+         * Set window unique id
+         *
+         * @param {Integer} id new id
+         *
+         * @inner
+         *
+         * @returns {jqWindow}
+         */
+        _setId : function(id) {
+            if (!this.id) {
+                this.id = id;
+                this.window.attr('id', 'jqwindow_' + this.id);
+            }
+            return this;
+        },
+        /**
+         * Get DOM element z-index
+         *
+         * @return integer
+         */
+        getZindex : function() {
+            return this.zIndex;
+        },
+        /**
+         * Set DOM element z-index
+         *
+         * @param {Integer} zIndex new z-index
+         *
+         * @inner
+         *
+         * @returns jqWindow
+         */
+        _setZindex : function(zIndex) {
+            this.zIndex = zIndex;
+            this.window.css('z-index', zIndex);
+            return this;
+        },
         /**
          * Get DOM element id attr
          *
-         * @return mixed
+         * @return string
          */
-        getDomId : function()
-        {
+        getDomId : function() {
             return this.window.attr('id');
         },
-
         /**
-         * Set DOM element z-index
+         * Get window manager container
          *
-         * @param zIndex integer
-         * @return integer
+         * @returns {jQuery}
          */
-        setZindex : function(zIndex)
-        {
-            this.zIndex = zIndex;
-            this.window.css('z-index', zIndex);
-            return zIndex;
+        getContainer : function() {
+            return this.manager.container;
         },
-
         /**
-         * Set DOM element z-index
+         * Set content of the window
          *
-         * @return integer
-         */
-        getZindex : function()
-        {
-            return this.zIndex;
-        },
-
-        /**
-         * Get position and size
+         * @param {DOM|String} content
          *
-         * @return struct
+         * @returns {jqWindow}
          */
-        getCurrentSizeAndPos : function()
-        {
-            return {width  : this.window.width(),
-                    height : this.window.height(),
-                    top    : this.window.offset().top,
-                    left   : this.window.offset().left};
-        },
+        setContent : function(content) {
+            this.content.html(content);
 
-        /**
-         * Update content of the window
-         *
-         * @todo
-         */
-        refreshContent : function()
-        {
-
-        }
-    },
-
-    confirm : function(message, options)
-    {
-        // Таймер
-        new $.jqWindow('jqwindow_confirm', $.extend(true, {}, options, {type : 'confirm'})).show();
-        return true;
-    },
-
-    /**
-     * Get element position
-     *
-     * @todo need to check for the jquery object
-     * @param element
-     */
-    getElementPosition : function(element)
-    {
-        var top = 0;
-        var left = 0;
-        if (element) {
-            var pos = element.offset();
-            top = pos.top + parseInt(element.css('borderTopWidth'));
-            left = pos.left + parseInt(element.css('borderLeftWidth'));
-        }
-
-        return {x : left, y : top};
-    },
-
-    getBrowserScrollPosition : function()
-    {
-        var scrOfX = 0, scrOfY = 0;
-        if (typeof( window.pageYOffset ) == 'number') {
-            //Netscape compliant
-            scrOfY = window.pageYOffset;
-            scrOfX = window.pageXOffset;
-        } else if (document.body && (document.body.scrollLeft || document.body.scrollTop)) {
-            //DOM compliant
-            scrOfY = document.body.scrollTop;
-            scrOfX = document.body.scrollLeft;
-        } else if (document.documentElement && (document.documentElement.scrollLeft || document.documentElement.scrollTop)) {
-            //IE6 standards compliant mode
-            scrOfY = document.documentElement.scrollTop;
-            scrOfX = document.documentElement.scrollLeft;
-        }
-        return {x:scrOfX, y:scrOfY};
-    },
-
-    hideBrowserScrollbar : function()
-    {
-        this.bodyOverflowSave = $('body').css('overflow');
-        $('body').css('overflow', 'hidden');
-    },
-
-    showBrowserScrollbar : function()
-    {
-        $('body').css('overflow', this.bodyOverflowSave);
-    },
-
-    /**
-     * Получить размеры рабочей области браузера
-     *
-     * return {width, height}
-     */
-    getBrowserScreenDimensions : function()
-    {
-        var width = document.documentElement.clientWidth,
-            height = document.documentElement.clientHeight;
-        return {width : width, height : height};
-    },
-
-    recountSizeWindowItems : function(jqWindow)
-    {
-        jqWindow.title.width(jqWindow.header.width() - jqWindow.headerActionBar.width() - 5);
-        var contentHeight = jqWindow.window.height() - jqWindow.header.outerHeight(true) - (jqWindow.content.outerHeight(true) - jqWindow.content.height());
-        //console.log(contentHeight);
-        jqWindow.body.height(contentHeight);
-
-        return this;
-    },
-
-    /**
-     * @todo Need fix. Lost current position and dimensions of the window and reset to defaults when browser window resize
-     */
-    recountWindowSizeAndPosition : function(jqWindow)
-    {
-;;;     if (jqWindow.settings.debug) {
-;;;         jqWindowManager.log("recountWindowSizeAndPosition: '" + jqWindow.getName() + "' #" + jqWindow.getId() , 5);
-;;;     }
-
-        if (jqWindow.settings.onBeforeResize && !jqWindow.settings.onBeforeResize(jqWindow, window.event, jqWindow.getCurrentSizeAndPos())) {
-;;;         if (jqWindow.settings.debug) {
-;;;             jqWindowManager.log("onBeforeResize: hook return false", 5);
-;;;         }
             return this;
-        }
+        },
+        /**
+         * Set window title
+         *
+         * @param {String} title
+         *
+         * @returns {jqWindow}
+         */
+        setTitle : function(title) {
+            this.title.html(title);
 
-        if (jqWindow.maximized) {
-;;;         if (jqWindow.settings.debug) {
-;;;             jqWindowManager.log("recountWindowSizeAndPosition: window is maximized", 5);
-;;;         }
-            this.maximize(jqWindow);
             return this;
-        }
-        jqWindow.originalSizeAndPos = jqWindow.getCurrentSizeAndPos();
+        },
+        /**
+         * Return window name
+         *
+         * @returns {String}
+         */
+        getName : function() {
+            return this.name;
+        },
+        /**
+         * Recount size and position of window
+         *
+         * @inner
+         *
+         * @todo Need fix. Lost current position and dimensions of the window and reset to defaults when browser window resize
+         *
+         * @returns {jqWindow}
+         */
+        /*_recountSizeAndPosition : function() {
+            var jqW = this;
+            if (jqW.maximized) {
+                jqW.maximize();
+                return this;
+            }
 
-        //if (!jqWindow.savedWindowParams) {
             // Calculate window width and height
-            var windowWidth = jqWindow.settings.width;
-            if (windowWidth[windowWidth.length - 1] == '%') {
-                windowWidth = (parseInt(windowWidth.substr(0, windowWidth.length - 1)) * (jqWindow.container ? jqWindow.container : $(window)).width() / 100);
-            }
-            var windowHeight = jqWindow.settings.height;
-            if (windowHeight[windowHeight.length - 1] == '%') {
-                windowHeight = (parseInt(windowHeight.substr(0, windowHeight.length - 1)) * (jqWindow.container ? jqWindow.container : $(window)).height() / 100);
-            }
-
-            if (jqWindow.settings.minWidth > 0 && windowWidth < jqWindow.settings.minWidth) {
-                windowWidth = jqWindow.settings.minWidth;
-            } else if (jqWindow.settings.maxWidth > 0 && windowWidth > jqWindow.settings.maxWidth) {
-                windowWidth = jqWindow.settings.maxWidth;
-            }
-            if (jqWindow.settings.minHeight > 0 && windowHeight < jqWindow.settings.minHeight) {
-                windowHeight = jqWindow.settings.minHeight;
-            } else if (jqWindow.settings.maxHeight > 0 && windowHeight > jqWindow.settings.maxHeight) {
-                windowHeight = jqWindow.settings.maxHeight;
-            }
+            var windowWidth = jqW.width ? jqW.width : jqW.settings.width;
+            var windowHeight = jqW.height ? jqW.height : jqW.settings.height;
+            jqW._resize(windowWidth, windowHeight);
 
             // calculate and set position of window
-            var containerPos = this.getElementPosition(jqWindow.container);
-            var scrollPos = this.getBrowserScrollPosition();
+            var windowPosX = jqW.left ? jqW.left : jqW.settings.left;
+            var windowPosY = jqW.top ? jqW.top : jqW.settings.top;
+            windowPosX = windowPosX != -1 ? windowPosX : 'center';
+            windowPosY = windowPosY != -1 ? windowPosY : 'middle';
+            jqW._drag(windowPosX, windowPosY);
 
-            var windowPosX = 0;
-            if (jqWindow.settings.left != -1) {
-                windowPosX = jqWindow.settings.left;
-                if (windowPosX[windowPosX.length - 1] == '%') {
-                    windowPosX = (parseInt(windowPosX.substr(0, windowPosX.length - 1)) * (jqWindow.container ? jqWindow.container : $(window)).width() / 100);
-                }
-            } else {
-                windowPosX = ((jqWindow.container ? jqWindow.container : $(window)).width() - windowWidth) / 2;
-            }
-            windowPosX += containerPos.x;
-
-            var windowPosY = 0;
-            if (jqWindow.settings.top != -1) {
-                windowPosY = jqWindow.settings.top;
-                if (windowPosY[windowPosY.length - 1] == '%') {
-                    windowPosY = (parseInt(windowPosY.substr(0, windowPosY.length - 1)) * (jqWindow.container ? jqWindow.container : $(window)).height() / 100);
-                }
-            } else {
-                windowPosY = ((jqWindow.container ? jqWindow.container : $(window)).height() - windowHeight) / 2;
-            }
-            windowPosY += containerPos.y;
-
-            if (!jqWindow.container) {
-                windowPosX += scrollPos.x;
-                windowPosY += scrollPos.y;
-            }
-       //}
-
-        jqWindow.window.css({
-            left    : windowPosX,
-            top     : windowPosY
-        }).width(windowWidth).height(windowHeight);
-
-
-
-        if (jqWindow.settings.onAfterResize) {
-            jqWindow.settings.onAfterResize(jqWindow, window.event, jqWindow.getCurrentSizeAndPos(), jqWindow.originalSizeAndPos);
-            delete jqWindow.originalSizeAndPos;
-        }
-        return this;
-    },
-
-    maximize : function(jqWindow)
-    {
-        if (!jqWindow.container) {
-            this.hideBrowserScrollbar();
-            var newDimensions = this.getBrowserScreenDimensions();
-            var newPos = this.getBrowserScrollPosition();
-        } else {
-            var newDimensions = {width  : jqWindow.container.width(),
-                                 height : jqWindow.container.height()};
-            var newPos = {x : jqWindow.container.offset().left,
-                          y : jqWindow.container.offset().top};
-        }
-
-        jqWindow.windowSaveParams = {width  : jqWindow.window.width(),
-                                     height : jqWindow.window.height(),
-                                     x      : jqWindow.window.offset().left,
-                                     y      : jqWindow.window.offset().top};
-
-        jqWindow.window.css({
-            width    : newDimensions.width,
-            height   : newDimensions.height,
-            top      : newPos.y,
-            left     : newPos.x
-        });
-
-        jqWindow.headerActionBar.children('.' + jqWindow.settings.headerMaximizeButtonClass).hide();
-        jqWindow.headerActionBar.children('.' + jqWindow.settings.headerMinimizeButtonClass).show();
-        jqWindow.maximized = true;
-
-        this.recountSizeWindowItems(jqWindow);
+            return this;
+        }, */
     }
 });
 
-
-$.jqWindowManager = function(options)
-{
-    if (!this._instance) {
-        this._instance = new jqWindowManager(options);
-    }
-    if (options) {
-        this._instance.setOptions(options);
-    }
-    return this._instance;
-};
-
-var jqWindowManager = function(options)
-{
-    jqWindowManager.settings = $.extend(true, {}, jqWindowManager.settings, options);
-};
-
-$.extend(jqWindowManager, {
-    settings : {
-        zIndexStart       : 1000,
-        overlayClass      : 'jqwindow_overlay',
-        persistentOverlay : false,
-        debugLevel        : 0
+/**
+ * @constructor
+ * @since version 0.2
+ */
+ListenerStorage = function() {
+    this.listeners = {};
+}
+$.extend(ListenerStorage, {
+    events : {
+        beforeCreate    : 'before_create',
+        afterCreate     : 'after_create',
+        beforeShow      : 'before_show',
+        afterShow       : 'after_show',
+        beforeFocus     : 'before_focus',
+        afterFocus      : 'after_focus',
+        beforeBlur      : 'before_blur',
+        afterBlur       : 'after_blur',
+        beforeClose     : 'before_close',
+        afterClose      : 'after_close',
+        beforeMaximize  : 'before_maximize',
+        afterMaximize   : 'after_maximize',
+        beforeMinimize  : 'before_minimize',
+        afterMinimize   : 'after_minimize',
+        beforeDrag      : 'before_drag',
+        afterDrag       : 'after_drag',
+        beforeResize    : 'before_resize',
+        afterResize     : 'after_resize'
     },
-    windows : [],
-    layers : [],
-    overlayableWindowCount : 0,
     prototype : {
-        setOptions : function(options)
-        {
-            jqWindowManager.settings = $.extend(true, {}, jqWindowManager.settings, options);
-        },
-        createWindow : function(name, options, parentWindow)
-        {
-            return new $.jqWindow(name, options, parentWindow);
-        },
-        getWindow : function(jqWindow)
-        {
-            jqWindowManager.getWindow(jqWindow);
-        },
-        getWindowByName : function(name)
-        {
-            return jqWindowManager.getWindowByName(name);
-        },
-        getWindowCount : function()
-        {
-            jqWindowManager.getWindowCount();
-        },
-        closeAllWindows : function()
-        {
-            for (var i = jqWindowManager.getLayerCount() - 1; i >= 0; i--) {
-                jqWindowManager.layers[i].close();
+        /**
+         * Add listener in storage
+         *
+         * @param {String|Function|Object} event event type (before_show, after_show etc.) or listener (if need listen all events)
+         * @param {Function|Array} listener example, function(){return true} or [new jqWindowManager(), new jqWindowManager()._eventHandler]
+         */
+        addListener : function(event, listener) {
+            if (typeof event != 'string') {
+                listener = event;
+                event = 'all';
             }
+            if (!this.listeners[event]) {
+                this.listeners[event] = [];
+            }
+            this.listeners[event].push(listener);
         },
-        getCurrentWindow : function()
-        {
-            return jqWindowManager.getLastLayer();
-        }
-    },
-
-    getWindow : function(jqWindow)
-    {
-        var windowId = this.getWindowIdFromMixed(jqWindow);
-        for (var key in this.windows) {
-            if (this.windows[key].getId() == windowId) {
-                return this.windows[key];
+        /**
+         * Delete listener from storage
+         *
+         * @param {String|Function|Object} event event type (before_show, after_show etc.) or listener (if need listen all events)
+         * @param {Function|Array} listener example, function(){return true} or [new jqWindowManager(), new jqWindowManager()._eventHandler]
+         */
+        deleteListener : function(event, listener) {
+            if (typeof event != 'string') {
+                listener = event;
+                event = 'all';
             }
-        }
-        return null;
-    },
-
-    getWindowByName : function(name)
-    {
-        for (var key in this.windows) {
-            if (this.windows[key].getName() == name) {
-                return this.windows[key];
+            if (!this.listeners[event]) {
+                return;
             }
-        }
-        return null;
-    },
-
-    getWindowIdFromMixed : function(windowId)
-    {
-        if (windowId) {
-            if (typeof(windowId) == 'string' && windowId.substring(0, 9) == 'jqwindow_') {
-                windowId = windowId.substring(9, windowId.length);
-            } else if (typeof(windowId) == 'object') {
-                windowId = windowId.getId();
-            }
-        }
-        return windowId;
-    },
-
-    registerWindow : function(jqWindow)
-    {
-        if (jqWindow instanceof $.jqWindow) {
-            jqWindow.id = this.getWindowCount() + 1;
-            this.windows.push(jqWindow);
-
-            /**
-             * @todo remove comments when will be fixed recountWindowSizeAndPosition
-             */
-            /*$(window).bind('resize.jqwindow_' + jqWindow.id, function(event) {
-                $.jqWindow.recountWindowSizeAndPosition(jqWindow).recountSizeWindowItems(jqWindow);
-            });*/
-            /**
-             * new window is always on top (current)
-             */
-            jqWindow.focus();
-            if (jqWindow.settings.overlayable) {
-                this.overlayableWindowCount++;
-            }
-            if (jqWindow.settings.overlayable || (this.settings.persistentOverlay && this.getWindowCount() == 1)) {
-                this.showOverlay(jqWindow);
-            }
-            return true;
-        }
-        return false;
-    },
-
-    removeWindow : function(jqWindow)
-    {
-        jqWindow = this.getWindow(jqWindow);
-
-        if (jqWindow) {
-            for (var key in this.windows) {
-                if (this.windows[key].getId() == jqWindow.getId()) {
-                    this.windows.splice(key, 1);
+            for (var i in this.listeners[event]) {
+                if (this.listeners[event][i] == listener) {
+                    this.listeners[event].splice(i, 1);
                     break;
                 }
             }
-
-            /**
-             * @todo remove comments when will be fixed recountWindowSizeAndPosition
-             */
-            //$(window).unbind('resize.jqwindow_' + jqWindow.getId());
-
-            this.deleteLayer(jqWindow);
-            var lastLayer = this.getLastLayer();
-            if (lastLayer instanceof $.jqWindow) {
-                lastLayer.focus();
-            }
-            if (jqWindow.settings.overlayable) {
-                for (var i = this.getWindowCount() - 1; i >= 0; i--) {
-                    if (this.windows[i] instanceof $.jqWindow && this.windows[i].settings.overlayable) {
-                        this.showOverlay(this.windows[i]);
-                        break;
-                    }
-                    if (this.settings.persistentOverlay && !i) {
-                        this.showOverlay(this.windows[i]);
-                    }
-                }
-                this.overlayableWindowCount--;
-            }
-
-            if (!this.overlayableWindowCount && !(this.settings.persistentOverlay && this.getWindowCount())) {
-                this.hideOverlay();
-            }
-        }
-    },
-
-    /**
-     * Get count of the windows in the registry
-     *
-     * @return integer
-     */
-    getWindowCount : function()
-    {
-        return this.windows.length;
-    },
-
-    focusWindow : function(jqWindow)
-    {
-        jqWindow = this.getWindow(jqWindow);
-
-        var lastLayer = this.getLastLayer();
-        if (jqWindow instanceof $.jqWindow) {
-            if (jqWindow != lastLayer) {
-                if (jqWindow.zIndex) {
-                    this.deleteLayer(jqWindow);
-                }
-                var windowZIndex = lastLayer ? lastLayer.getZindex() + 2 : this.settings.zIndexStart;
-                jqWindow.setZindex(windowZIndex);
-                this.layers.push(jqWindow);
-            }
-            if (lastLayer) {
-                lastLayer.window.removeClass(lastLayer.settings.focusedClass);
-            }
-            jqWindow.window.addClass(jqWindow.settings.focusedClass);
-        }
-    },
-
-    getLastLayer : function()
-    {
-        if (this.layers.length) {
-            for (var i = this.layers.length - 1; i >= 0; i--) {
-                if (this.layers[i] instanceof $.jqWindow) {
-                    return this.layers[i];
-                }
-            }
-        }
-        return null;
-    },
-
-    getLayerCount : function()
-    {
-        return this.layers.length;
-    },
-
-    deleteLayer : function(jqWindow)
-    {
-        if (!jqWindow instanceof $.jqWindow) {
-            jqWindow = this.getWindow(jqWindow);
-        }
-        for (var key in this.layers) {
-            if (this.layers[key].getZindex() == jqWindow.getZindex()) {
-                this.layers.splice(key, 1);
-                break;
-            }
-        }
-    },
-
-    createOverlay : function()
-    {
-        if (this.overlay) {
-            return;
-        }
-        var container = $('body');
-        this.overlay =  $('<div></div>').addClass(this.settings.overlayClass)
-                                        .appendTo(container);
-        $.jqWindow.hideBrowserScrollbar();
-    },
-
-    showOverlay : function(jqWindow)
-    {
-        if (!jqWindow instanceof $.jqWindow) {
-            jqWindow = this.getWindow(jqWindow);
-        }
-
-        if (!this.overlay) {
-            this.createOverlay();
-        }
-        var jqOverlay = this.overlay;
-
-        if (jqOverlay.jqWindow) {
-            (jqOverlay.jqWindow.container ? jqOverlay.jqWindow.container : $(window)).unbind('resize.jqwindow_resize_overlay');
-        }
-
-        jqOverlay.jqWindow = jqWindow;
-
-        (jqOverlay.jqWindow.container ? jqOverlay.jqWindow.container : $(window)).bind('resize.jqwindow_resize_overlay', function() {
-                                                                                    jqWindowManager.resizeOverlay();
-                                                                                 });
-
-        if (jqWindow.settings.type == 'modal') {
-            jqOverlay.addClass(jqWindow.settings.modalOverlayClass);
-        } else {
-            jqOverlay.removeClass(jqWindow.settings.modalOverlayClass);
-        }
-
-        jqOverlay.css('z-index', jqWindow.zIndex - 1);
-
-        this.resizeOverlay();
-
-        jqOverlay.unbind('click.jqwindow');
-        if (!jqWindow.settings.type == 'modal' && jqWindow.settings.overlayable) {
-            jqOverlay.bind('click.jqwindow', function(event) {
-                if (!jqWindow.settings.onBeforeOverlayClick || jqWindow.settings.onBeforeOverlayClick(jqWindow, jqOverlay, event)) {
-                    jqWindow.close();
-                    if (jqWindow.settings.onAfterOverlayClick) {
-                        jqWindow.settings.onAfterOverlayClick(jqWindow, jqOverlay, event);
+        },
+        /**
+         * Notify listeners about event
+         *
+         * @param {String|Function|Object} event event type (before_show, after_show etc.)
+         *
+         * @returns {Boolean}
+         */
+        notify : function(event) {
+            var result = true;
+            if (this.listeners[event]) {
+                var args = Array.prototype.slice.call(arguments, 1);
+                for (var i in this.listeners[event]) {
+                    var listener = this.listeners[event][i];
+                    if (listener instanceof Array) {
+                        result = listener[1].apply(listener[0], args);
+                    } else {
+                        result = listener.apply(null, args);
                     }
                 }
-            });
+            }
+            if (this.listeners['all']) {
+                for (var i in this.listeners['all']) {
+                    var listener = this.listeners['all'][i];
+                    if (listener instanceof Array) {
+                        result = listener[1].apply(listener[0], arguments);
+                    } else {
+                        result = listener.apply(null, arguments);
+                    }
+                }
+            }
+            return result;
         }
-    },
-
-    resizeOverlay : function()
-    {
-        var jqWindow = this.overlay.jqWindow;
-
-        if (!jqWindow.container) {
-            var windowDimensions = $.jqWindow.getBrowserScreenDimensions();
-        }
-
-        var width  = jqWindow.container ? jqWindow.container.width() : windowDimensions.width;
-        var height = jqWindow.container ? jqWindow.container.height() : windowDimensions.height;
-        var top    = jqWindow.container ? jqWindow.container.offset().top : 0;
-        var left   = jqWindow.container ? jqWindow.container.offset().left : 0;
-
-        this.overlay.css({
-            width   : width,
-            height  : height,
-            top     : top,
-            left    : left
-        });
-    },
-
-    hideOverlay : function()
-    {
-        if (this.overlay) {
-            $.jqWindow.showBrowserScrollbar();
-            this.overlay.remove();
-            this.overlay = null;
-        }
-    },
-
-    log : function(message, level)
-    {
-;;;     if (!level) {
-;;;         level = 1;
-;;;     }
-;;;     if (this.settings.debugLevel > level) {
-;;;         console.log(message);
-;;;     }
     }
-
+});
+/**
+ * @class
+ * @constructor
+ * @since version 0.2
+ */
+Logger = function(options) {
+    this.settings = $.extend(true, {}, Logger.defaults, options);
+    this.adapter = console != undefined ? 'console' : 'alert';
+    if (console) {
+        this.adapter = console;
+    } else {
+        this.settings.level = 1;
+        this.adapter = {
+            info : function(message) {
+                alert(message);
+            },
+            warn : function(message) {
+                alert(message);
+            },
+            error : function(message) {
+                alert(message);
+            }
+        }
+    }
+}
+$.extend(Logger, {
+    defaults : {
+        level : 4 //1 - errors, 2 - warnings, 3 - info, 4 - debug
+    },
+    prototype : {
+        _eventHandler : function() {
+            var event = arguments[0];
+            var args = Array.prototype.slice.call(arguments).slice(1);
+            if (this.settings.level >= 3) {
+                this.adapter.info('Init event "' + event + '"');
+            }
+            if (this.settings.level == 4) {
+                this.adapter.info('Arguments:');
+                this.adapter.info(args);
+                this.adapter.info('-----------');
+            }
+            return true;
+        }
+    }
 });
 
 })(jQuery);
