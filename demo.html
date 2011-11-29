@@ -17,7 +17,9 @@
                 console.log('any window listener');
                 return false;
             });
-            $.jqWindowManager().addWindow('test').addEventListener('after_show', function(jqWin) {
+            $.jqWindowManager().addWindow('test', {
+                overlayable : true
+            }).addEventListener('after_show', function(jqWin) {
                 console.log('listener');
                 jqWin.setTitle('test');
                 return true;
@@ -33,7 +35,8 @@
                 width : '50%',
                 height : '90%',
                 left : 'center',
-                top : 'middle'
+                top : 'middle',
+                overlayable : true
             });
             jqW2.show();
 

@@ -49,19 +49,24 @@ jqWindowManager = function(container, options) {
 
     var jqWM = this;
     jqWM.container.isWindow = $.isWindow(container);
-    /*jqWM.container.bind('resize.jqwindow_container_resize', function() {
-        for (var i in jqWM.windows) {
+    var container = jqWM.container.isWindow ? $('body') : jqWM.container;
+    this.overlay =  $('<div></div>').width('100%')
+                                    .height('100%')
+                                    .addClass(jqWM.settings.overlayClass)
+                                    .hide()
+                                    .appendTo(container);
+    //jqWM.container.bind('resize.jqwindow_container_resize', function() {
+        /*for (var i in jqWM.windows) {
             jqWM.windows[i]._recountSizeAndPosition();
-        }
-    }); */
+        } */
+    //});
 }
 
 $.extend(jqWindowManager, {
     defaults : {
         logLevel          : 4, //1 - errors, 2 - warnings, 3 - info, 4 - debug
         zIndexStart       : 1000,
-        overlayClass      : 'jqwindow_overlay',
-        persistentOverlay : false,
+        overlayClass      : 'jqwindow_overlay'
     },
     prototype : {
         /**
@@ -74,9 +79,14 @@ $.extend(jqWindowManager, {
          */
         addWindow : function(name, options) {
             var window = new jqWindow(name, this, options);
+            window.addEventListener(ListenerStorage.events.beforeFocus, [this, this._focusWindow]);
             window.addEventListener([this, this._eventHandler]);
             if (this.settings.logLevel >= 3) {
                 window.addEventListener([this.logger, this.logger._eventHandler]);
+            }
+            if (window.settings.overlayable) {
+                window.addEventListener(ListenerStorage.events.beforeShow, [this, this._showOverlay]);
+                window.addEventListener(ListenerStorage.events.afterClose, [this, this._deleteWindow]);
             }
             window.create()
                   ._setId(this.getWindowCount() + 1)
@@ -161,6 +171,9 @@ $.extend(jqWindowManager, {
          * @param {jqWindow|Integer|String} window
          *
          * @inner
+         * @event
+         *
+         * @returns {Boolean}
          */
         _focusWindow : function(window) {
             if (!window instanceof jqWindow) {
@@ -179,8 +192,54 @@ $.extend(jqWindowManager, {
                     if (focusedWindow instanceof jqWindow) {
                         focusedWindow.blur();
                     }
+                } else {
+                    return false;
                 }
             }
+            return true;
+        },
+        /**
+         * Show overlay on window focus
+         *
+         * @param {jqWindow} window
+         *
+         * @inner
+         * @event
+         *
+         * @returns {Boolean}
+         */
+        _showOverlay : function(window) {
+            if (!window instanceof jqWindow) {
+                window = this.getWindow(window);
+            }
+            this.overlay.addClass(window.settings.overlayClass)
+                        .css('z-index', window.getZindex() - 1)
+                        .show();
+
+            this.overlay.unbind('click.jqwindow');
+            if (!window.settings.modal || window.settings.overlayable) {
+                this.overlay.bind('click.jqwindow', function(event) {
+                    window.close();
+                });
+            }
+
+            this._hideContainerScrollbar();
+
+            return true;
+        },
+        /**
+         * Hide overlay
+         *
+         * @inner
+         *
+         * @returns {Boolean}
+         */
+        _hideOverlay : function() {
+            this.overlay.hide();
+
+            this._showContainerScrollbar();
+
+            return true;
         },
         /**
          * Delete window from layers
@@ -222,28 +281,20 @@ $.extend(jqWindowManager, {
                         break;
                     }
                 }
-
-                /*this.deleteLayer(window);
-                 var focusedWindow = this.getFocusedWindow();
-                 if (focusedWindow instanceof jqWindow) {
-                 focusedWindow.focus();
-                 }
-                 if (window.settings.overlayable) {
-                 for (var i = this.getWindowCount() - 1; i >= 0; i--) {
-                 if (this.windows[i] instanceof jqWindow && this.windows[i].settings.overlayable) {
-                 this.showOverlay(this.windows[i]);
-                 break;
-                 }
-                 if (this.settings.persistentOverlay && !i) {
-                 this.showOverlay(this.windows[i]);
-                 }
-                 }
-                 this.overlayableWindowCount--;
-                 }
-
-                 if (!this.overlayableWindowCount && !(this.settings.persistentOverlay && this.getWindowCount())) {
-                 this.hideOverlay();
-                 } */
+                this._deleteLayer(window);
+                if (window.settings.overlayable) {
+                    var hideOverlay = true;
+                    for (var i = this.layers.length - 1; i >= 0; i--) {
+                        if (this.layers[i].settings.overlayable) {
+                            this._showOverlay(this.layers[i]);
+                            hideOverlay = false;
+                            break;
+                        }
+                    }
+                    if (hideOverlay) {
+                        this._hideOverlay();
+                    }
+                }
             }
             return this;
         },
@@ -252,6 +303,8 @@ $.extend(jqWindowManager, {
          *
          * @event
          * @inner
+         *
+         * @returns {Boolean}
          */
         _eventHandler : function() {
             return this.listeners.notify.apply(this.listeners, arguments);
@@ -383,9 +436,8 @@ $.extend(jqWindow, {
         scrollableClass                          : 'jqwindow_scrollable',
         draggableClass                           : 'jqwindow_draggable',
         focusClass                               : 'jqwindow_focus',
-
-        modalOverlayClass                        : 'jqwindow_modal_overlay',
         overlayClass                             : 'jqwindow_overlay',
+        modalOverlayClass                        : 'jqwindow_modal_overlay'
     },
     prototype : {
         /**
@@ -646,10 +698,9 @@ $.extend(jqWindow, {
          */
         close : function() {
             if (this.listeners.notify(ListenerStorage.events.beforeClose, this)) {
-                this.manager._deleteWindow(this);
                 this.window.remove();
+                this.listeners.notify(ListenerStorage.events.afterClose, this);
                 delete this;
-                this.listeners.notify(ListenerStorage.events.afterClose);
             }
         },
         /**
@@ -659,7 +710,6 @@ $.extend(jqWindow, {
          */
         focus : function() {
             if (this.listeners.notify(ListenerStorage.events.beforeFocus, this)) {
-                this.manager._focusWindow(this);
                 this.window.addClass(this.settings.focusClass);
                 this.listeners.notify(ListenerStorage.events.afterFocus, this);
             }
@@ -1109,6 +1159,9 @@ $.extend(ListenerStorage, {
                     } else {
                         result = listener.apply(null, args);
                     }
+                    if (result == false) {
+                        return result;
+                    }
                 }
             }
             if (this.listeners['all']) {
@@ -1118,6 +1171,9 @@ $.extend(ListenerStorage, {
                         result = listener[1].apply(listener[0], arguments);
                     } else {
                         result = listener.apply(null, arguments);
+                    }
+                    if (result == false) {
+                        return result;
                     }
                 }
             }
