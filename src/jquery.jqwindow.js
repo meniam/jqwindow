@@ -14,8 +14,45 @@
  * @since 11 augest 2011
  */
 (function($) {
+/**
+ * Hash of window managers
+ *
+ * @var {Object}
+ */
+var managers = {};
+/**
+ * Count of window managers
+ *
+ * @var {Integer}
+ */
+var managerCount = 0;
 
 /**
+ * Create new window
+ *
+ * @param {String} name name of window
+ * @param {Object} [options] options of window [optional]
+ *
+ * @returns {jqWindow}
+ */
+$.jqWindow = function(name, options) {
+    return $.jqWindowManager().addWindow(name, options);
+}
+
+/**
+ * Create new window in container
+ *
+ * @param {String} name name of window
+ * @param {Object} [options] options of window [optional]
+ *
+ * @returns {jqWindow}
+ */
+$.fn.jqWindow = function(name, options) {
+    return $(this).jqWindowManager().addWindow(name, options);
+}
+
+/**
+ * Returns window manager
  *
  * @param {Object} options
  *
@@ -23,13 +60,37 @@
  * @returns {jqWindowManager}
  */
 $.jqWindowManager = function(options) {
-    if (!this.managers) {
-        this.managers = {};
+    if (!managers['jqwm_default']) {
+        managers['jqwm_default'] = new jqWindowManager(window, options);
     }
-    if (!this.managers['default']) {
-        this.managers['default'] = new jqWindowManager(window, options);
+    return managers['jqwm_default'];
+}
+
+/**
+ * Returns window manager of container
+ *
+ * @param {Object} options
+ *
+ * @constructor
+ *
+ * @returns {jqWindowManager}
+ */
+$.fn.jqWindowManager = function(options) {
+    var container = this[0];
+    if (!container) {
+        return $.jqWindowManager(options);
     }
-    return this.managers['default'];
+    container = $(container);
+    var managerId = container.data('jqwmanager');
+    if (!managerId) {
+        managerId = 'jqwm_' + (managerCount + 1);
+        container.data('jqwmanager', managerId);
+    }
+    if (!managers[managerId]) {
+        managers[managerId] = new jqWindowManager(container, options);
+        managerCount++;
+    }
+    return managers[managerId];
 }
 
 /**
@@ -323,8 +384,15 @@ $.extend(jqWindowManager, {
 
             container.css('overflow', 'hidden');
             container.bind('scroll.jqwindow_hide_scroll', function(event) {
-                event.preventDefault();
+                event.cancelBubble = true;
                 event.returnValue = false;
+                if (event.preventDefault) {
+                    event.preventDefault();
+                }
+                if (event.stopPropagation) {
+                    event.stopPropagation();
+                }
+                return false;
             });
         },
         /**
@@ -422,22 +490,22 @@ $.extend(jqWindow, {
         scrollToEasing           : 'linear', //Parameter "easing" of the animation scrolling window content
 
         // css classes
-        windowClass                              : 'jqwindow',
-        headerClass                              : 'jqwindow_header',
-        titleClass                               : 'jqwindow_title',
-        actionBarClass                           : 'jqwindow_action_bar',
-        actionBarButtonClass                     : 'jqwindow_button',
-        maximizeButtonClass                      : 'jqwindow_maximize',
-        minimizeButtonClass                      : 'jqwindow_minimize',
-        closeButtonClass                         : 'jqwindow_close',
-        footerClass                              : 'jqwindow_footer',
-        bodyClass                                : 'jqwindow_body',
-        contentClass                             : 'jqwindow_content',
-        scrollableClass                          : 'jqwindow_scrollable',
-        draggableClass                           : 'jqwindow_draggable',
-        focusClass                               : 'jqwindow_focus',
-        overlayClass                             : 'jqwindow_overlay',
-        modalOverlayClass                        : 'jqwindow_modal_overlay'
+        windowClass              : 'jqwindow',
+        headerClass              : 'jqwindow_header',
+        titleClass               : 'jqwindow_title',
+        actionBarClass           : 'jqwindow_action_bar',
+        actionBarButtonClass     : 'jqwindow_button',
+        maximizeButtonClass      : 'jqwindow_maximize',
+        minimizeButtonClass      : 'jqwindow_minimize',
+        closeButtonClass         : 'jqwindow_close',
+        footerClass              : 'jqwindow_footer',
+        bodyClass                : 'jqwindow_body',
+        contentClass             : 'jqwindow_content',
+        scrollableClass          : 'jqwindow_scrollable',
+        draggableClass           : 'jqwindow_draggable',
+        focusClass               : 'jqwindow_focus',
+        overlayClass             : 'jqwindow_overlay',
+        modalOverlayClass        : 'jqwindow_modal_overlay'
     },
     prototype : {
         /**
@@ -563,17 +631,22 @@ $.extend(jqWindow, {
 
 
             // Scroll to anchor
-            /*jqW.content.delegate('a[href*="#"]', 'click', function(event) {
+            jqW.content.delegate('a[href*="#"]', 'click', function(event) {
                 var url = $(this).attr("href");
                 var anchorName = url.substr(url.search('#') + 1);
-                if (anchorName.length && jqW.settings.onBeforeScrollTo(jqWindow)) {
-                    var scrollTop = $('[name="' + anchorName + '"]').offset().top - jqW.body.offset().top + jqW.body.scrollTop();
-                    jqW.body.animate({scrollTop: scrollTop}, jqW.settings.scrollToDuration, jqW.settings.scrollToEasing, function() {
-                        jqW.settings.onAfterScrollTo(jqW);
-                    });
+                var scrollTop = $('[name="' + anchorName + '"]').offset().top - jqW.body.offset().top + jqW.body.scrollTop();
+                jqW.body.animate({scrollTop: scrollTop}, jqW.settings.scrollToDuration, jqW.settings.scrollToEasing);
+
+                event.cancelBubble = true;
+                event.returnValue = false;
+                if (event.preventDefault) {
+                    event.preventDefault();
                 }
-                event.preventDefault();
-            });  */
+                if (event.stopPropagation) {
+                    event.stopPropagation();
+                }
+                return false;
+            });
 
             if (jqW.settings.resizeable) {
                 var endResizeFunction = function() {
