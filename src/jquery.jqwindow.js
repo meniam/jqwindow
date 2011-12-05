@@ -8,7 +8,7 @@
  *   http://www.gnu.org/licenses/gpl.html
  *
  * @copyright 2011 Zapp-East llc.
- * @author Julia Shilova <julinary@gmail.com> main contributor and maintainer
+ * @author Julia Loykova <julinary@gmail.com> main contributor and maintainer
  * @author Eugene Myazin <meniam@gmail.com>
  * @version 0.2 beta
  * @since 11 augest 2011
@@ -458,6 +458,7 @@ $.extend(jqWindow, {
         style                    : 'jqwindow_normal jqwindow_padded', // window style [jqwindow_normal, jqwindow_basic, jqwindow_shadow, jqwindow_framed, jqwindow_masked, jqwindow_padded_basic, jqwindow_padded]
 
         title                    : '&nbsp;',
+        content                  : '',
         footer                   : '',
 
         minimizeButtonText       : 'Minimize',
@@ -609,9 +610,9 @@ $.extend(jqWindow, {
 
             // create window title
             jqW.title = $('<span></span>').addClass(jqW.settings.titleClass)
-                .html(jqW.settings.title)
-                .width(jqW.header.width() - jqW.actionBar.width() - 5)
-                .appendTo(jqW.header);
+                                        .html(jqW.settings.title)
+                                        .width(jqW.header.width() - jqW.actionBar.width() - 5)
+                                        .appendTo(jqW.header);
 
             // create footer
             if (jqW.settings.footer) {
@@ -620,8 +621,9 @@ $.extend(jqWindow, {
                                              .appendTo(jqW.window);
             }
 
-            jqW.content = $('<div></div>').addClass(jqW.settings.contentClass)
-                                          .appendTo(jqW.window);
+            jqW.content = $('<div />').html(jqW.settings.content)
+                                      .addClass(jqW.settings.contentClass)
+                                      .appendTo(jqW.window);
 
             var contentHeight = jqW.window.height() - jqW.header.outerHeight(true) - (jqW.content.outerHeight(true) - jqW.content.height());
             jqW.content.wrap($('<div></div>')

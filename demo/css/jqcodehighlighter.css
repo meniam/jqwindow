@@ -1,0 +1,20 @@
+.jqcode.str {
+    color: red
+}
+.jqcode.function {
+    color:blue
+}
+.jqcode.comment {
+    color:orange
+}
+.jqcode.keyword {
+    font-weight:bold
+}
+.jqcode.str span {
+    color:red;
+    font-weight:normal
+}
+.jqcode.comment span {
+    color: orange;
+    font-weight: normal
+}
