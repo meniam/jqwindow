@@ -376,24 +376,27 @@ $.extend(jqWindowManager, {
          * @inner
          */
         _hideContainerScrollbar : function() {
-            var container = this.container.isWindow ? $('body') : this.container;
-            if (!this.containerCssSave) {
-                this.containerCssSave = {};
-            }
-            this.containerCssSave.overflow = container.css('overflow');
+            if (!this.container.scrollbarIsHide) {
+                var container = this.container.isWindow ? $('body') : this.container;
+                if (!this.container.cssSave) {
+                    this.container.cssSave = {};
+                }
+                this.container.cssSave.overflow = container.css('overflow');
+                this.container.scrollbarIsHide = true;
 
-            container.css('overflow', 'hidden');
-            container.bind('scroll.jqwindow_hide_scroll', function(event) {
-                event.cancelBubble = true;
-                event.returnValue = false;
-                if (event.preventDefault) {
-                    event.preventDefault();
-                }
-                if (event.stopPropagation) {
-                    event.stopPropagation();
-                }
-                return false;
-            });
+                container.css('overflow', 'hidden');
+                container.bind('scroll.jqwindow_hide_scroll', function (event) {
+                    event.cancelBubble = true;
+                    event.returnValue = false;
+                    if (event.preventDefault) {
+                        event.preventDefault();
+                    }
+                    if (event.stopPropagation) {
+                        event.stopPropagation();
+                    }
+                    return false;
+                });
+            }
         },
         /**
          * Show container scrollbar
@@ -402,9 +405,9 @@ $.extend(jqWindowManager, {
          */
         _showContainerScrollbar : function() {
             var container = this.container.isWindow ? $('body') : this.container;
-
-            container.css('overflow', this.containerCssSave.overflow);
+            container.css('overflow', this.container.cssSave.overflow);
             container.unbind('scroll.jqwindow_hide_scroll');
+            this.container.scrollbarIsHide = false;
         }
     },
     /**

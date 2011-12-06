@@ -27,48 +27,67 @@
     <div class="description"></div>
     <h3 class="title">Javascript source:</h3>
     <div class="code javascript">
-    $.jqWindow('example_1', {
+    $.jqWindow('example_1.1', {
         width  : '50%',
         height : 300,
         top    : 'middle',
         left   : '30%',
-        title  : 'Simple window',
+        title  : 'Simple window 1',
+        content: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor.'
+    }).show();
+
+    $.jqWindowManager().addWindow('example_1.2', {
+        top    : 0,
+        left   : 0,
+        title  : 'Simple window 2',
         content: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor.'
     }).show();
     </div>
     <h3 class="title">Demo:</h3>
     <div class="demo">
-        <input class="exec_example" type="button" value="show window">
+        <input class="exec_example" type="button" value="show windows">
     </div>
 </div>
 <div class="example example_2">
-    <h2 class="title">Show overlay window</h2>
+    <h2 class="title">Show overlay and modal window</h2>
     <div class="description"></div>
     <h3 class="title">Javascript source:</h3>
     <div class="code javascript">
-    $.jqWindow('example_2', {
-        width  : 600,
-        height : 600,
-        title  : 'I`m overlay window',
-        content: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor.',
+    $.jqWindow('example_2.1', {
+        width       : 600,
+        height      : 600,
+        title       : 'I`m overlay window',
+        content     : 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor.',
         overlayable : true
     }).show();
-    </div>
-    <h3 class="title">Demo:</h3>
-    <div class="demo">
-        <input class="exec_example" type="button" value="show window">
-    </div>
-</div>
-<div class="example example_3">
-    <h2 class="title">Show modal window</h2>
-    <div class="description"></div>
-    <h3 class="title">Javascript source:</h3>
-    <div class="code javascript">
-    $.jqWindow('example_3', {
+
+    $.jqWindow('example_2.2', {
         title  : 'I`m modal window',
         content: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor.',
         modal  : true
     }).show();
+    </div>
+    <h3 class="title">Demo:</h3>
+    <div class="demo">
+        <input class="exec_example" type="button" value="show windows">
+    </div>
+</div>
+<div class="example example_3">
+    <h2 class="title">Get window</h2>
+    <div class="description"></div>
+    <h3 class="title">Javascript source:</h3>
+    <div class="code javascript">
+    var jqW1 = $.jqWindow('example_3.1', {
+        title : 'example_3.1'
+    });
+    var jqW2 = $.jqWindow('example_3.2', {
+        top   : '10%',
+        left  : '10%',
+        title : 'example_3.2'
+    });
+
+    $.jqWindowManager().getWindowByName('example_3.1').show();
+    $.jqWindowManager().getWindow(jqW2.getId()).show();
     </div>
     <h3 class="title">Demo:</h3>
     <div class="demo">
@@ -84,12 +103,96 @@
         title  : 'Listener usage',
         content: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor.',
     }).addEventListener('after_show', function(jqWindow) {
-        jqWindow.setContent('New content');
+        jqWindow.setContent('New content set after show');
+    }).addEventListener('before_close', function(jqWindow) {
+        return confirm('Are you sure?');
+    }).addEventListener(function(eventType, jqWindow) {
+        jqWindow.setTitle('Current event: ' + eventType);
+        return true;
     }).show();
     </div>
     <h3 class="title">Demo:</h3>
     <div class="demo">
         <input class="exec_example" type="button" value="show window">
+    </div>
+</div>
+<div class="example example_5">
+    <h2 class="title">Window manager event listener usage</h2>
+    <div class="description"></div>
+    <h3 class="title">Javascript source:</h3>
+    <div class="code javascript">
+    $.jqWindowManager().addEventListener('after_show', function(jqWindow) {
+        alert('Window ' + jqWindow.getName() + ' show' );
+    });
+    $.jqWindow('jqW_1', {
+        top    : '10%',
+        left   : '20%',
+        title  : 'jqW_1 - Window manager event listener usage',
+        content: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor.',
+    }).show();
+    $.jqWindow('jqW_2', {
+        title  : 'jqW_2 - Window manager event listener usage',
+        content: 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor.',
+    }).show();
+    </div>
+    <h3 class="title">Demo:</h3>
+    <div class="demo">
+        <input class="exec_example" type="button" value="show window">
+    </div>
+</div>
+<div class="example example_6">
+    <h2 class="title">Window manipulations</h2>
+    <div class="description"></div>
+    <h3 class="title">Javascript source:</h3>
+    <div class="code javascript">
+    var jqW = $.jqWindow('jqW_1', {
+        top         : 0,
+        left        : 0,
+        title       : 'Window manipulations',
+        content     : 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor.',
+        overlayable : true
+    });
+    setTimeout(function() {
+        jqW.show();
+    }, 1000);
+    setTimeout(function() {
+        jqW.resize('80%', '80%');
+    }, 2000);
+    setTimeout(function() {
+        jqW.drag('10%', '10%');
+    }, 3000);
+    setTimeout(function() {
+        jqW.close();
+    }, 4000);
+    </div>
+    <h3 class="title">Demo:</h3>
+    <div class="demo">
+        <input class="exec_example" type="button" value="show window">
+    </div>
+</div>
+<div class="example example_7">
+    <h2 class="title">Window container usage</h2>
+    <div class="description"></div>
+    <h3 class="title">Javascript source:</h3>
+    <div class="code javascript">
+    $('#container_1').jqWindow('example_7.1', {
+        width       : '50%',
+        height      : '50%',
+        title       : 'example_7.1 - Inner window',
+        content     : 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor.',
+    }).show();
+    $('#container_2').jqWindowManager().addWindow('example_7.2', {
+        width       : '50%',
+        height      : '50%',
+        title       : 'example_7.2 - Inner window',
+        content     : 'Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget dolor.',
+    }).show();
+    </div>
+    <h3 class="title">Demo:</h3>
+    <div class="demo">
+        <div id="container_1" style="width: 500px; height: 300px; float: left; background: #c7c7c7;"></div>
+        <div id="container_2" style="width: 500px; height: 300px; margin-left: 550px; background: #c7c7c7"></div>
+        <input class="exec_example" type="button" value="show windows">
     </div>
 </div>
 </body>
