@@ -110,6 +110,9 @@ jqWindowManager = function(container, options) {
 
     var jqWM = this;
     jqWM.container.isWindow = $.isWindow(container);
+    if (!jqWM.container.isWindow) {
+        jqWM.container.css('position', 'relative');
+    }
     var container = jqWM.container.isWindow ? $('body') : jqWM.container;
     this.overlay =  $('<div></div>').width('100%')
                                     .height('100%')
@@ -429,7 +432,12 @@ $.extend(jqWindowManager, {
         }
         return id;
     },
+    _getThemePathByName : function(themeName) {
 
+    },
+    _loadTheme : function(themePath) {
+
+    }
 });
 
 /**
@@ -459,6 +467,8 @@ jqWindow = function(name, manager, options) {
 $.extend(jqWindow, {
     defaults : {
         style                    : 'jqwindow_normal jqwindow_padded', // window style [jqwindow_normal, jqwindow_basic, jqwindow_shadow, jqwindow_framed, jqwindow_masked, jqwindow_padded_basic, jqwindow_padded]
+        theme                    : 'grey',
+        themePath                : '',
 
         title                    : '&nbsp;',
         content                  : '',
@@ -553,11 +563,13 @@ $.extend(jqWindow, {
                 jqW.header.addClass(jqW.settings.draggableClass)
                            .bind('mousedown.jqwindow_drag', function(event) {
                                 if (jqW.listeners.notify(ListenerStorage.events.beforeDrag, jqW)) {
-                                    var startPosX = event.pageX - jqW.window.offset().left;
-                                    var startPosY = event.pageY - jqW.window.offset().top;
+                                    var startPosX = jqW.getContainer().scrollLeft() + event.pageX - jqW.window.offset().left;
+                                    var startPosY = jqW.getContainer().scrollTop() + event.pageY - jqW.window.offset().top;
                                     $(window).bind('mousemove.jqwindow_drag', function(event) {
                                         var posX = event.pageX - startPosX;
+                                        posX -= jqW.getContainer().isWindow ? 0 : jqW.getContainer().offset().left;
                                         var posY = event.pageY - startPosY;
+                                        posY -= jqW.getContainer().isWindow ? 0 : jqW.getContainer().offset().top;
                                         jqW._drag(posX, posY);
                                         event.preventDefault();
                                     });
@@ -895,15 +907,16 @@ $.extend(jqWindow, {
                 } else if (posX == 'center') {
                     posX = (this.getContainer().width() - this.window.width()) / 2
                 } else if (posX[posX.length - 1] == '%') {
-                    posX = parseInt(posX.substr(0, posX.length - 1)) * this.getContainer().width() / 100;
+                    posX = parseInt(posX.substr(0, posX.length - 1)) * (this.getContainer().width()) / 100;
                 }
+                posX += this.getContainer().scrollLeft();
                 if (!this.settings.allowSpadeWest) {
-                    var minX = this.getContainer().isWindow ? 0 : this.getContainer().offset().left;
+                    var minX = 0;
                 } else {
                     var minX = -1;
                 }
                 if (!this.settings.allowSpadeEast) {
-                    var maxX = this.getContainer().isWindow ? Math.max($('body').width(), this.getContainer().width()) : this.getContainer().width() + this.getContainer().offset().left;
+                    var maxX = this.getContainer().isWindow ? Math.max($('body').width(), this.getContainer().width()) : this.getContainer().width();
                     maxX -= this.window.outerWidth(true);
                 } else {
                     var maxX = -1;
@@ -919,17 +932,18 @@ $.extend(jqWindow, {
                 } else if (posY == 'bottom') {
                     posY = this.getContainer().height() - this.window.height();
                 } else if (posY == 'middle') {
-                    posY = (this.getContainer().height() - this.window.height()) / 2
+                    posY = (this.getContainer().height() - this.window.height()) / 2;
                 } else if (posY[posY.length - 1] == '%') {
-                    posY = parseInt(posY.substr(0, posY.length - 1)) * this.getContainer().height() / 100;
+                    posY = parseInt(posY.substr(0, posY.length - 1)) * (this.getContainer().height()) / 100;
                 }
+                posY += this.getContainer().scrollTop();
                 if (!this.settings.allowSpadeNorth) {
-                    var minY = this.getContainer().isWindow ? 0 : this.getContainer().offset().top;
+                    var minY = 0;
                 } else {
                     var minY = -1;
                 }
                 if (!this.settings.allowSpadeSouth) {
-                    var maxY = this.getContainer().isWindow ? Math.max($('body').height(), this.getContainer().height()) : this.getContainer().height() + this.getContainer().offset().top;
+                    var maxY = this.getContainer().isWindow ? Math.max($('body').height(), this.getContainer().height()) : this.getContainer().height();
                     maxY -= this.window.outerHeight(true);
                 } else {
                     var maxY = -1;
@@ -1266,8 +1280,8 @@ $.extend(ListenerStorage, {
  */
 Logger = function(options) {
     this.settings = $.extend(true, {}, Logger.defaults, options);
-    this.adapter = console != undefined ? 'console' : 'alert';
-    if (console) {
+    //this.adapter = console != undefined ? 'console' : 'alert';
+    if (console != undefined) {
         this.adapter = console;
     } else {
         this.settings.level = 1;

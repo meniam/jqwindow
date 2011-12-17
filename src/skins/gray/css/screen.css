@@ -67,7 +67,7 @@
 	background-image: url("http://dev.sencha.com/deploy/ext-4.0.2a/examples/themes/../../resources/themes/images/gray/panel-header/panel-header-default-top-bg.gif");
 }
 
-.jqwindow > .jqwindow_header.draggable {
+.jqwindow > .jqwindow_header.jqwindow_draggable {
 	cursor: move;
 }
 
@@ -147,9 +147,9 @@
 }
 
 .jqwindow_overlay {
-	background: none repeat scroll 0 0 #FFFFFF;
+	background-color: #000;
     left: 0;
-    opacity: 0.5;
+    opacity: 0.55;
     position: fixed;
     top: 0;
     z-index: 50;
