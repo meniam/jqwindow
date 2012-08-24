@@ -905,7 +905,7 @@ $.extend(jqWindow, {
                 } else if (posX == 'right') {
                     posX = this.getContainer().width() - this.window.width();
                 } else if (posX == 'center') {
-                    posX = (this.getContainer().width() - this.window.width()) / 2
+                    posX = (this.getContainer().width() - this.window.width()) / 2;
                 } else if (posX[posX.length - 1] == '%') {
                     posX = parseInt(posX.substr(0, posX.length - 1)) * (this.getContainer().width()) / 100;
                 }
@@ -916,7 +916,7 @@ $.extend(jqWindow, {
                     var minX = -1;
                 }
                 if (!this.settings.allowSpadeEast) {
-                    var maxX = this.getContainer().isWindow ? Math.max($('body').width(), this.getContainer().width()) : this.getContainer().width();
+                    var maxX = this.getContainer().isWindow ? Math.max($(document).width(), this.getContainer().width()) : this.getContainer().width();
                     maxX -= this.window.outerWidth(true);
                 } else {
                     var maxX = -1;
@@ -943,7 +943,7 @@ $.extend(jqWindow, {
                     var minY = -1;
                 }
                 if (!this.settings.allowSpadeSouth) {
-                    var maxY = this.getContainer().isWindow ? Math.max($('body').height(), this.getContainer().height()) : this.getContainer().height();
+                    var maxY = this.getContainer().isWindow ? Math.max($(document).height(), this.getContainer().height()) : this.getContainer().height();
                     maxY -= this.window.outerHeight(true);
                 } else {
                     var maxY = -1;
