@@ -20,9 +20,3 @@ Features
 * Easy access to all windows elements
   (setTitle(), setContetns(), etc...)
 * Multi-object architecture.
-
-small test
-/**
- *
- * fixed 1838
- */
