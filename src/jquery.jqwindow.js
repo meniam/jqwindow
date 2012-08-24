@@ -230,6 +230,20 @@ $.extend(jqWindowManager, {
             return this;
         },
         /**
+         * Delete event listener for any window
+         *
+         * @param {String|Function|Object} event event type (before_show, after_show etc.) or listener (if need listen all events)
+         * @param {Function|Array} [listener] example, function(){return true} or [new jqWindowManager(), new jqWindowManager()._eventHandler]. If undefined then delete all listeners this event
+         *
+         * @since version 0.2
+         *
+         * @returns {jqWindow}
+         */
+        deleteEventListener : function(event, listener) {
+            this.listeners.deleteListener(event, listener);
+            return this;
+        },
+        /**
          * Focus window
          *
          * @param {jqWindow|Integer|String} window
@@ -1041,6 +1055,20 @@ $.extend(jqWindow, {
             return this;
         },
         /**
+         * Delete event listener for window
+         *
+         * @param {String|Function|Object} event event type (before_show, after_show etc.) or listener (if need listen all events)
+         * @param {Function|Array} [listener] example, function(){return true} or [new jqWindowManager(), new jqWindowManager()._eventHandler]. If undefined then delete all listeners this event
+         *
+         * @since version 0.2
+         *
+         * @returns {jqWindow}
+         */
+        deleteEventListener : function(event, listener) {
+            this.listeners.deleteListener(event, listener);
+            return this;
+        },
+        /**
          * Get window unique id
          *
          * @returns {Integer}
@@ -1216,7 +1244,7 @@ $.extend(ListenerStorage, {
          * Delete listener from storage
          *
          * @param {String|Function|Object} event event type (before_show, after_show etc.) or listener (if need listen all events)
-         * @param {Function|Array} listener example, function(){return true} or [new jqWindowManager(), new jqWindowManager()._eventHandler]
+         * @param {Function|Array} [listener] example, function(){return true} or [new jqWindowManager(), new jqWindowManager()._eventHandler]. If undefined then delete all listeners this event
          */
         deleteListener : function(event, listener) {
             if (typeof event != 'string') {
@@ -1224,6 +1252,10 @@ $.extend(ListenerStorage, {
                 event = 'all';
             }
             if (!this.listeners[event]) {
+                return;
+            }
+            if (listener == undefined) {
+                delete this.listeners[event];
                 return;
             }
             for (var i in this.listeners[event]) {
