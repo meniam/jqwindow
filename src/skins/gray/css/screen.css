@@ -4,53 +4,12 @@
 	background: #ffffff;
 	z-index: 1000;
 }
-
-.jqwindow_normal {
-	box-shadow: 0px 0px 10px #BBB;
-	border-radius: 0.3em;
-}
-
-.jqwindow_basic {
-	background: #ffffff;
-}
-
-.jqwindow_masked {
-	background: #CCCCCC;
-}
-
-.jqwindow_framed {
-	background: #F1F1F1;
-}
-
 .jqwindow > .jqwindow_body {
 	overflow: hidden;
 }
 
 .jqwindow.jqwindow_scrollable > .jqwindow_body {
 	overflow: auto;
-}
-
-.jqwindow_padded > .jqwindow_body > .jqwindow_content {
-	margin: 5px;
-}
-
-.jqwindow_padded-basic > .jqwindow_body > .jqwindow_content,
-.jqwindow_padded-masked > .jqwindow_body > .jqwindow_content,
-.jqwindow_padded-framed > .jqwindow_body > .jqwindow_content {
-	margin: 5px;
-	border: 1px solid #D0D0D0;
-}
-
-.jqwindow_padded-basic > .jqwindow_body > .jqwindow_content {
-	background: #ffffff;
-}
-
-.jqwindow_padded-masked > .jqwindow_body > .jqwindow_content {
-	background: #CCC;
-}
-
-.jqwindow_padded-framed > .jqwindow_body > .jqwindow_content {
-	background: #F1F1F1;
 }
 
 .jqwindow > .jqwindow_header {
@@ -156,4 +115,64 @@
 }
 .jqwindow_overlay.jqwindow_modal_overlay {
     background-color: #AAA;
+}
+
+/*
+* Popup window
+*/
+.jqwindow.jqwindow_popup .jqwindow_header {
+    background: none;
+}
+.jqwindow.jqwindow_popup .jqwindow_arrow.up {
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-bottom: 10px solid #D0D0D0;
+}
+.jqwindow.jqwindow_popup .jqwindow_arrow.down {
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 10px solid #D0D0D0;
+}
+.jqwindow.jqwindow_popup.jqwindow_normal {
+    box-shadow: 2px 2px 10px #BBB;
+}
+
+.jqwindow_normal {
+	box-shadow: 0px 0px 10px #BBB;
+	border-radius: 0.3em;
+}
+
+.jqwindow_basic {
+	background: #ffffff;
+}
+
+.jqwindow_masked {
+	background: #CCCCCC;
+}
+
+.jqwindow_framed {
+	background: #F1F1F1;
+}
+
+.jqwindow_padded > .jqwindow_body > .jqwindow_content {
+	margin: 5px;
+}
+
+.jqwindow_padded-basic > .jqwindow_body > .jqwindow_content,
+.jqwindow_padded-masked > .jqwindow_body > .jqwindow_content,
+.jqwindow_padded-framed > .jqwindow_body > .jqwindow_content {
+	margin: 5px;
+	border: 1px solid #D0D0D0;
+}
+
+.jqwindow_padded-basic > .jqwindow_body > .jqwindow_content {
+	background: #ffffff;
+}
+
+.jqwindow_padded-masked > .jqwindow_body > .jqwindow_content {
+	background: #CCC;
+}
+
+.jqwindow_padded-framed > .jqwindow_body > .jqwindow_content {
+	background: #F1F1F1;
 }

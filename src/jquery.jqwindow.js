@@ -51,6 +51,133 @@ $.fn.jqWindow = function(name, options) {
     return $(this).jqWindowManager().addWindow(name, options);
 }
 
+
+/**
+ * Create new popup window in container
+ *
+ * @param {Object} elem
+ * @param {String} name name of window
+ * @param {Object} [options] options of window [optional]
+ *
+ * @returns {jqWindow}
+ */
+$.jqPopupWindow = function(elem, name, options) {
+    options = $.extend(true, {}, {
+        style           : jqWindow.defaults.style + ' jqwindow_popup',
+        pointerClass    : 'jqwindow_arrow',
+        horizontalAlign : 'center',
+        verticalAlign   : 'bottom',
+        pointerHeight   : 10,
+        pointerWidth    : 10,
+    }, options);
+    options.overlayable = false;
+    options.minimizable = false;
+    options.maximizable = false;
+    //options.resizeable = false;
+    options.draggable = false;
+    options.modal = false;
+
+    elem = $(elem);
+
+    /** @var window jqWindow */
+    var window = $.jqWindowManager().addWindow(name, options);
+
+    var arrow = $('<div />').addClass(options.pointerClass)
+                            .css({position : 'absolute'})
+                            .insertBefore(window.header);
+
+    var elemTop = elem.offset().top - $(document).scrollTop();
+    var elemLeft = elem.offset().left - $(document).scrollLeft();
+
+    var top  = elemTop;
+    var left = elemLeft;
+
+    var maxY = window.getContainer().isWindow ? Math.max($(document).height(), window.getContainer().height()) : window.getContainer().height();
+    maxY -= window.window.outerHeight(true) + options.pointerHeight ;
+    var minY = window.window.outerHeight(true) + options.pointerHeight ;
+
+    if (options.verticalAlign == 'bottom' && elem.offset().top > maxY) {
+        options.verticalAlign = 'top';
+    }
+    if (options.verticalAlign == 'top' && elem.offset().top < minY) {
+        options.verticalAlign = 'bottom';
+    }
+    window.window.addClass(options.verticalAlign);
+
+    switch(options.verticalAlign) {
+        case 'top':
+            top -= window.window.outerHeight(true) + options.pointerHeight;
+            arrow.css({
+                top    : 'auto',
+                bottom : -options.pointerHeight
+            });
+            arrow.addClass('down');
+            break;
+        default :
+            top += elem.height() + options.pointerHeight;
+            arrow.css({
+                top    : -options.pointerHeight,
+                bottom : 'auto'
+            });
+            arrow.addClass('up');
+    }
+
+    var maxX = window.getContainer().isWindow ? Math.max($(document).width(), window.getContainer().width()) : window.getContainer().width();
+    maxX -= window.window.outerWidth(true);
+    var minX = window.window.outerWidth(true);
+
+    if (options.horizontalAlign == 'right' && (elem.offset().left < minX)) {
+        options.horizontalAlign = 'center';
+    }
+    if (options.horizontalAlign == 'center' && (elem.offset().left < minX)) {
+        options.horizontalAlign = 'left';
+    }
+    if (options.horizontalAlign == 'left' && (elem.offset().left > maxX)) {
+        options.horizontalAlign = 'center';
+    }
+    if (options.horizontalAlign == 'center' && (elem.offset().left > maxX)) {
+        options.horizontalAlign = 'right';
+    }
+    window.window.addClass(options.horizontalAlign);
+
+    var arrowLeft  = null;
+    var arrowRight = null;
+    switch(options.horizontalAlign) {
+        case 'right':
+            left -= window.window.width() - elem.width();
+            arrowRight = Math.round(elem.width() / 2);
+            break;
+        case 'left':
+            arrowLeft = Math.round(elem.width() / 2);
+            break;
+        default :
+            left -= Math.round(window.window.width() / 2) - Math.round(elem.width() / 2);
+            arrowLeft = elemLeft + elem.width() / 2 - left;
+    }
+    if (arrowLeft != null) {
+        arrowLeft -= Math.round(options.pointerWidth / 2);
+        if (arrowLeft >= window.window.width()) {
+            arrowLeft = window.window.width();
+        } else if (arrowLeft < 0) {
+            arrowLeft = 0;
+        }
+        arrow.css('left', arrowLeft);
+    }
+    if (arrowRight != null) {
+        arrowRight -= Math.round(options.pointerWidth / 2);
+        if (arrowRight >= window.window.width()) {
+            arrowRight = window.window.width();
+        } else if (arrowLeft < 0) {
+            arrowRight = 0;
+        }
+        arrow.css('right', arrowRight);
+    }
+
+    window._drag(left, top);
+
+    return window;
+}
+
 /**
  * Returns window manager
  *
@@ -966,7 +1093,6 @@ $.extend(jqWindow, {
                 posY = maxY >= 0 ? Math.min(maxY, posY) : posY;
                 newPosition.top = posY;
             }
-
             this.window.css(newPosition);
         },
         /**
