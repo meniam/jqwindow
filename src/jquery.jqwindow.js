@@ -17,13 +17,13 @@
 /**
  * Hash of window managers
  *
- * @var {Object}
+ * @type {Object}
  */
 var managers = {};
 /**
  * Count of window managers
  *
- * @var {Integer}
+ * @type {Integer}
  */
 var managerCount = 0;
 
@@ -33,7 +33,9 @@ var managerCount = 0;
  * @param {String} name name of window
  * @param {Object} [options] options of window [optional]
  *
- * @returns {jqWindow}
+ * @constructor
+ *
+ * @return {jqWindow}
  */
 $.jqWindow = function(name, options) {
     return $.jqWindowManager().addWindow(name, options);
@@ -45,7 +47,9 @@ $.jqWindow = function(name, options) {
  * @param {String} name name of window
  * @param {Object} [options] options of window [optional]
  *
- * @returns {jqWindow}
+ * @constructor
+ *
+ * @return {jqWindow}
  */
 $.fn.jqWindow = function(name, options) {
     return $(this).jqWindowManager().addWindow(name, options);
@@ -59,7 +63,9 @@ $.fn.jqWindow = function(name, options) {
  * @param {String} name name of window
  * @param {Object} [options] options of window [optional]
  *
- * @returns {jqWindow}
+ * @constructor
+ *
+ * @return {jqWindow}
  */
 $.jqPopupWindow = function(elem, name, options) {
     options = $.extend(true, {}, {
@@ -74,7 +80,7 @@ $.jqPopupWindow = function(elem, name, options) {
     options.overlayable = false;
     options.minimizable = false;
     options.maximizable = false;
-    //options.resizeable = false;
+    options.resizeable = false;
     options.draggable = false;
     options.modal = false;
 
@@ -185,7 +191,8 @@ $.jqPopupWindow = function(elem, name, options) {
  * @param {Object} options
  *
  * @constructor
- * @returns {jqWindowManager}
+ *
+ * @return {jqWindowManager}
  */
 $.jqWindowManager = function(options) {
     if (!managers['jqwm_default']) {
@@ -201,7 +208,7 @@ $.jqWindowManager = function(options) {
  *
  * @constructor
  *
- * @returns {jqWindowManager}
+ * @return {jqWindowManager}
  */
 $.fn.jqWindowManager = function(options) {
     var container = this[0];
@@ -225,6 +232,7 @@ $.fn.jqWindowManager = function(options) {
  *
  * @param {Object} container
  * @param {object} options
+ * @this {jqWindowManager}
  *
  * @constructor
  */
@@ -267,7 +275,7 @@ $.extend(jqWindowManager, {
          * @param {String} name
          * @param {Object} options
          *
-         * @returns {jqWindow}
+         * @return {jqWindow}
          */
         addWindow : function(name, options) {
             var window = new jqWindow(name, this, options);
@@ -292,7 +300,7 @@ $.extend(jqWindowManager, {
          *
          * @param {jqWindow|String|Integer} window
          *
-         * @returns {jqWindow|null}
+         * @return {jqWindow|null}
          */
         getWindow : function(window) {
             var windowId = jqWindowManager._getWindowIdFromMixed(window);
@@ -308,7 +316,7 @@ $.extend(jqWindowManager, {
          *
          * @param {String} name window name
          *
-         * @returns {jqWindow|null}
+         * @return {jqWindow|null}
          */
         getWindowByName : function(name) {
             for (var i = 0, length = this.windows.length; i < length; i++) {
@@ -321,7 +329,7 @@ $.extend(jqWindowManager, {
         /**
          * Get count of windows
          *
-         * @returns {Integer}
+         * @return {Integer}
          */
         getWindowCount : function() {
             return this.windows.length;
@@ -329,7 +337,7 @@ $.extend(jqWindowManager, {
         /**
          * Get focused window
          *
-         * @returns {jqWindow|null}
+         * @return {jqWindow|null}
          */
         getFocusedWindow : function() {
             if (this.layers.length) {
@@ -351,7 +359,7 @@ $.extend(jqWindowManager, {
          *
          * @since version 0.2
          *
-         * @returns {jqWindowManager}
+         * @return {jqWindowManager}
          */
         addEventListener : function(event, listener) {
             this.listeners.addListener(event, listener);
@@ -365,7 +373,7 @@ $.extend(jqWindowManager, {
          *
          * @since version 0.2
          *
-         * @returns {jqWindow}
+         * @return {jqWindow}
          */
         deleteEventListener : function(event, listener) {
             this.listeners.deleteListener(event, listener);
@@ -379,7 +387,7 @@ $.extend(jqWindowManager, {
          * @inner
          * @event
          *
-         * @returns {Boolean}
+         * @return {Boolean}
          */
         _focusWindow : function(window) {
             if (!window instanceof jqWindow) {
@@ -412,7 +420,7 @@ $.extend(jqWindowManager, {
          * @inner
          * @event
          *
-         * @returns {Boolean}
+         * @return {Boolean}
          */
         _showOverlay : function(window) {
             if (!window instanceof jqWindow) {
@@ -438,7 +446,7 @@ $.extend(jqWindowManager, {
          *
          * @inner
          *
-         * @returns {Boolean}
+         * @return {Boolean}
          */
         _hideOverlay : function() {
             this.overlay.hide();
@@ -474,7 +482,7 @@ $.extend(jqWindowManager, {
          *
          * @inner
          *
-         * @returns {jqWindowManager}
+         * @return {jqWindowManager}
          */
         _deleteWindow : function(window) {
             if (window instanceof jqWindow) {
@@ -510,7 +518,7 @@ $.extend(jqWindowManager, {
          * @event
          * @inner
          *
-         * @returns {Boolean}
+         * @return {Boolean}
          */
         _eventHandler : function() {
             return this.listeners.notify.apply(this.listeners, arguments);
@@ -563,7 +571,7 @@ $.extend(jqWindowManager, {
      * @inner
      * @static
      *
-     * @returns {Integer} window id
+     * @return {Integer} window id
      */
     _getWindowIdFromMixed : function(data) {
         var id = data;
@@ -588,6 +596,7 @@ $.extend(jqWindowManager, {
  * @param {String} name window name
  * @param {jqWindowManager} manager
  * @param {Object} options
+ * @this {jqWindow}
  *
  * @constructor
  */
@@ -627,6 +636,8 @@ $.extend(jqWindow, {
         resizeable               : true,
         overlayable              : false,
         modal                    : false,
+
+        contentOverflowY         : 'scroll', // window content overflow [hidden, scroll, autoresize]
 
         width                    : 400,
         height                   : 400,
@@ -670,7 +681,7 @@ $.extend(jqWindow, {
          *
          * Window show by @see jqWindow.show() method
          *
-         * @returns {jqWindow}
+         * @return {jqWindow}
          */
         create : function() {
             var jqW = this;
@@ -778,8 +789,7 @@ $.extend(jqWindow, {
                                              .appendTo(jqW.window);
             }
 
-            jqW.content = $('<div />').html(jqW.settings.content)
-                                      .addClass(jqW.settings.contentClass)
+            jqW.content = $('<div />').addClass(jqW.settings.contentClass)
                                       .appendTo(jqW.window);
 
             var contentHeight = jqW.window.height() - jqW.header.outerHeight(true) - (jqW.content.outerHeight(true) - jqW.content.height());
@@ -788,6 +798,12 @@ $.extend(jqWindow, {
                        .height(contentHeight));
             jqW.body = jqW.content.parent();
 
+            if (jqW.settings.contentOverflowY == 'scroll') {
+                jqW.body.css('overflow-y', 'auto');
+            }
+            if (jqW.settings.contentOverflowY == 'hidden') {
+                jqW.body.css('overflow-y', 'hidden');
+            }
 
             // Scroll to anchor
             jqW.content.delegate('a[href*="#"]', 'click', function(event) {
@@ -908,6 +924,8 @@ $.extend(jqWindow, {
             var posY = jqW.settings.top != -1 ? jqW.settings.top : 'middle';
             jqW._drag(posX, posY);
 
+            jqW.setContent(jqW.settings.content);
+
             jqW.window.hide();
 
             jqW.listeners.notify(ListenerStorage.events.afterCreate, jqW);
@@ -916,7 +934,7 @@ $.extend(jqWindow, {
         /**
          * Show the window
          *
-         * @returns {jqWindow}
+         * @return {jqWindow}
          */
         show : function() {
             if (this.listeners.notify(ListenerStorage.events.beforeShow, this)) {
@@ -938,7 +956,7 @@ $.extend(jqWindow, {
         /**
          * Focus window
          *
-         * @returns {jqWindow}
+         * @return {jqWindow}
          */
         focus : function() {
             if (this.listeners.notify(ListenerStorage.events.beforeFocus, this)) {
@@ -950,7 +968,7 @@ $.extend(jqWindow, {
         /**
          * Blur window
          *
-         * @returns {jqWindow}
+         * @return {jqWindow}
          */
         blur : function() {
             if (this.listeners.notify(ListenerStorage.events.beforeBlur, this)) {
@@ -962,7 +980,7 @@ $.extend(jqWindow, {
         /**
          * Maximize window
          *
-         * @returns {jqWindow}
+         * @return {jqWindow}
          */
         maximize : function() {
             if (this.listeners.notify(ListenerStorage.events.beforeMaximize, this)) {
@@ -994,7 +1012,7 @@ $.extend(jqWindow, {
         /**
          * Minimize window
          *
-         * @returns {jqWindow}
+         * @return {jqWindow}
          */
         minimize : function() {
             if (this.listeners.notify(ListenerStorage.events.beforeMinimize, this)) {
@@ -1022,7 +1040,7 @@ $.extend(jqWindow, {
          * @param {Integer|String} posX
          * @param {Integer|String} posY
          *
-         * @returns {jqWindow}
+         * @return {jqWindow}
          */
         drag : function(posX, posY) {
             if (this.listeners.notify(ListenerStorage.events.beforeDrag, this)) {
@@ -1102,7 +1120,7 @@ $.extend(jqWindow, {
          * @param {String|Integer|null} width new width
          * @param {String|Integer|null} height new height
          *
-         * @returns {jqWindow}
+         * @return {jqWindow}
          */
         resize : function (width, height) {
             if (this.listeners.notify(ListenerStorage.events.beforeResize, this)) {
@@ -1119,7 +1137,7 @@ $.extend(jqWindow, {
          *
          * @inner
          *
-         * @returns {Boolean} true - if size of window was changed
+         * @return {Boolean} true - if size of window was changed
          */
         _resize : function (width, height) {
             var result = false;
@@ -1175,7 +1193,7 @@ $.extend(jqWindow, {
          *
          * @since version 0.2
          *
-         * @returns {jqWindow}
+         * @return {jqWindow}
          */
         addEventListener : function(event, listener) {
             this.listeners.addListener(event, listener);
@@ -1189,7 +1207,7 @@ $.extend(jqWindow, {
          *
          * @since version 0.2
          *
-         * @returns {jqWindow}
+         * @return {jqWindow}
          */
         deleteEventListener : function(event, listener) {
             this.listeners.deleteListener(event, listener);
@@ -1198,7 +1216,7 @@ $.extend(jqWindow, {
         /**
          * Get window unique id
          *
-         * @returns {Integer}
+         * @return {Integer}
          */
         getId : function() {
             return this.id;
@@ -1210,7 +1228,7 @@ $.extend(jqWindow, {
          *
          * @inner
          *
-         * @returns {jqWindow}
+         * @return {jqWindow}
          */
         _setId : function(id) {
             if (!this.id) {
@@ -1234,7 +1252,7 @@ $.extend(jqWindow, {
          *
          * @inner
          *
-         * @returns jqWindow
+         * @return jqWindow
          */
         _setZindex : function(zIndex) {
             this.zIndex = zIndex;
@@ -1252,7 +1270,7 @@ $.extend(jqWindow, {
         /**
          * Get window manager container
          *
-         * @returns {jQuery}
+         * @return {jQuery}
          */
         getContainer : function() {
             return this.manager.container;
@@ -1262,11 +1280,22 @@ $.extend(jqWindow, {
          *
          * @param {DOM|String} content
          *
-         * @returns {jqWindow}
+         * @return {jqWindow}
          */
         setContent : function(content) {
             this.content.html(content);
+            if (this.settings.contentOverflowY == 'autoresize') {
+                var contentHeight = this.content.outerHeight(true);
+                var bodyHeight = this.body.height();
+                var windowHeight = contentHeight + this.header.outerHeight(true) + (this.body.outerHeight(true) - bodyHeight);
+                if (this.settings.maxHeight && windowHeight > this.settings.maxHeight) {
+                    this.body.css('overflow-y', 'auto');
+                } else {
+                    this.body.css('overflow-y', 'none');
+                }
 
+                this.resize(undefined, windowHeight);
+            }
             return this;
         },
         /**
@@ -1274,7 +1303,7 @@ $.extend(jqWindow, {
          *
          * @param {String} title
          *
-         * @returns {jqWindow}
+         * @return {jqWindow}
          */
         setTitle : function(title) {
             this.title.html(title);
@@ -1284,7 +1313,7 @@ $.extend(jqWindow, {
         /**
          * Return window name
          *
-         * @returns {String}
+         * @return {String}
          */
         getName : function() {
             return this.name;
@@ -1296,7 +1325,7 @@ $.extend(jqWindow, {
          *
          * @todo Need fix. Lost current position and dimensions of the window and reset to defaults when browser window resize
          *
-         * @returns {jqWindow}
+         * @return {jqWindow}
          */
         /*_recountSizeAndPosition : function() {
             var jqW = this;
@@ -1397,7 +1426,7 @@ $.extend(ListenerStorage, {
          *
          * @param {String|Function|Object} event event type (before_show, after_show etc.)
          *
-         * @returns {Boolean}
+         * @return {Boolean}
          */
         notify : function(event) {
             var result = true;

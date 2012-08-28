@@ -4,13 +4,6 @@
 	background: #ffffff;
 	z-index: 1000;
 }
-.jqwindow > .jqwindow_body {
-	overflow: hidden;
-}
-
-.jqwindow.jqwindow_scrollable > .jqwindow_body {
-	overflow: auto;
-}
 
 .jqwindow > .jqwindow_header {
 	background-color: #D7D2D2;
