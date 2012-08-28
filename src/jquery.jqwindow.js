@@ -69,6 +69,7 @@ $.jqPopupWindow = function(elem, name, options) {
         verticalAlign   : 'bottom',
         pointerHeight   : 10,
         pointerWidth    : 10,
+        padding         : 2
     }, options);
     options.overlayable = false;
     options.minimizable = false;
@@ -93,8 +94,8 @@ $.jqPopupWindow = function(elem, name, options) {
     var left = elemLeft;
 
     var maxY = window.getContainer().isWindow ? Math.max($(document).height(), window.getContainer().height()) : window.getContainer().height();
-    maxY -= window.window.outerHeight(true) + options.pointerHeight ;
-    var minY = window.window.outerHeight(true) + options.pointerHeight ;
+    maxY -= window.window.outerHeight(true) + options.pointerHeight + options.padding;
+    var minY = window.window.outerHeight(true) + options.pointerHeight + options.padding;
 
     if (options.verticalAlign == 'bottom' && elem.offset().top > maxY) {
         options.verticalAlign = 'top';
@@ -106,7 +107,7 @@ $.jqPopupWindow = function(elem, name, options) {
 
     switch(options.verticalAlign) {
         case 'top':
-            top -= window.window.outerHeight(true) + options.pointerHeight;
+            top -= window.window.outerHeight(true) + options.pointerHeight + options.padding;
             arrow.css({
                 top    : 'auto',
                 bottom : -options.pointerHeight
@@ -114,7 +115,7 @@ $.jqPopupWindow = function(elem, name, options) {
             arrow.addClass('down');
             break;
         default :
-            top += elem.height() + options.pointerHeight;
+            top += elem.height() + options.pointerHeight + options.padding;
             arrow.css({
                 top    : -options.pointerHeight,
                 bottom : 'auto'
