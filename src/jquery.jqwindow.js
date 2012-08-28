@@ -182,6 +182,43 @@ $.jqPopupWindow = function(elem, name, options) {
 
     window._drag(left, top);
 
+    //@todo need refactoring
+    window.addEventListener(ListenerStorage.events.afterSetContent, function() {
+        var top  = elemTop;
+        var left = elemLeft;
+
+        var maxY = window.getContainer().isWindow ? Math.max($(document).height(), window.getContainer().height()) : window.getContainer().height();
+        maxY -= window.window.outerHeight(true) + options.pointerHeight + options.padding;
+        var minY = window.window.outerHeight(true) + options.pointerHeight + options.padding;
+
+        if (options.verticalAlign == 'bottom' && elem.offset().top > maxY) {
+            options.verticalAlign = 'top';
+        }
+        if (options.verticalAlign == 'top' && elem.offset().top < minY) {
+            options.verticalAlign = 'bottom';
+        }
+        window.window.addClass(options.verticalAlign);
+
+        switch(options.verticalAlign) {
+            case 'top':
+                top -= window.window.outerHeight(true) + options.pointerHeight + options.padding;
+                arrow.css({
+                    top    : 'auto',
+                    bottom : -options.pointerHeight
+                });
+                arrow.addClass('down');
+                break;
+            default :
+                top += elem.height() + options.pointerHeight + options.padding;
+                arrow.css({
+                    top    : -options.pointerHeight,
+                    bottom : 'auto'
+                });
+                arrow.addClass('up');
+        }
+        window._drag(undefined, top);
+    });
+
     return window;
 }
 
@@ -676,6 +713,10 @@ $.extend(jqWindow, {
     },
     prototype : {
         /**
+         * @type {boolean}
+         */
+        isVisible : false,
+        /**
          * At this point we create DOM structure
          * for new window, but don't show it
          *
@@ -939,7 +980,21 @@ $.extend(jqWindow, {
         show : function() {
             if (this.listeners.notify(ListenerStorage.events.beforeShow, this)) {
                 this.window.show();
+                this.isVisible = true;
                 this.listeners.notify(ListenerStorage.events.afterShow, this);
+            }
+            return this;
+        },
+        /**
+         * Hide the window
+         *
+         * @return {jqWindow}
+         */
+        hide : function() {
+            if (this.listeners.notify(ListenerStorage.events.beforeHide, this)) {
+                this.window.hide();
+                this.isVisible = false;
+                this.listeners.notify(ListenerStorage.events.afterHide, this);
             }
             return this;
         },
@@ -1283,18 +1338,26 @@ $.extend(jqWindow, {
          * @return {jqWindow}
          */
         setContent : function(content) {
-            this.content.html(content);
-            if (this.settings.contentOverflowY == 'autoresize') {
-                var contentHeight = this.content.outerHeight(true);
-                var bodyHeight = this.body.height();
-                var windowHeight = contentHeight + this.header.outerHeight(true) + (this.body.outerHeight(true) - bodyHeight);
-                if (this.settings.maxHeight && windowHeight > this.settings.maxHeight) {
-                    this.body.css('overflow-y', 'auto');
-                } else {
-                    this.body.css('overflow-y', 'none');
+            if (this.listeners.notify(ListenerStorage.events.beforeSetContent, this)) {
+                this.content.html(content);
+                if (this.settings.contentOverflowY == 'autoresize') {
+                    if (!this.isVisible) {
+                        this.window.show();
+                    }
+                    var contentHeight = this.content.outerHeight(true);
+                    var bodyHeight = this.body.height();
+                    var windowHeight = contentHeight + this.header.outerHeight(true) + (this.body.outerHeight(true) - bodyHeight);
+                    if (!this.isVisible) {
+                        this.window.hide();
+                    }
+                    if (this.settings.maxHeight && windowHeight > this.settings.maxHeight) {
+                        this.body.css('overflow-y', 'auto');
+                    } else {
+                        this.body.css('overflow-y', 'none');
+                    }
+                    this.resize(undefined, windowHeight);
                 }
-
-                this.resize(undefined, windowHeight);
+                this.listeners.notify(ListenerStorage.events.afterSetContent, this);
             }
             return this;
         },
@@ -1364,6 +1427,8 @@ $.extend(ListenerStorage, {
         afterCreate     : 'after_create',
         beforeShow      : 'before_show',
         afterShow       : 'after_show',
+        beforeHide      : 'before_hide',
+        afterHide       : 'after_hide',
         beforeFocus     : 'before_focus',
         afterFocus      : 'after_focus',
         beforeBlur      : 'before_blur',
@@ -1377,7 +1442,9 @@ $.extend(ListenerStorage, {
         beforeDrag      : 'before_drag',
         afterDrag       : 'after_drag',
         beforeResize    : 'before_resize',
-        afterResize     : 'after_resize'
+        afterResize     : 'after_resize',
+        beforeSetContent: 'before_set_content',
+        afterSetContent : 'after_set_content'
     },
     prototype : {
         /**
