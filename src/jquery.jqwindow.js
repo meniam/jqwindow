@@ -82,12 +82,13 @@ $.jqPopupWindow = function(elem, name, options) {
     options.maximizable = false;
     options.resizeable = false;
     options.draggable = false;
-    options.modal = false;
 
     elem = $(elem);
 
     /** @var window jqWindow */
     var window = $.jqWindowManager().addWindow(name, options);
+
+    window.controlElement = elem;
 
     var arrow = $('<div />').addClass(options.pointerClass)
                             .css({position : 'absolute'})
@@ -301,7 +302,7 @@ jqWindowManager = function(container, options) {
 
 $.extend(jqWindowManager, {
     defaults : {
-        logLevel          : 4, //1 - errors, 2 - warnings, 3 - info, 4 - debug
+        logLevel          : 1, //1 - errors, 2 - warnings, 3 - info, 4 - debug
         zIndexStart       : 1000,
         overlayClass      : 'jqwindow_overlay'
     },
@@ -323,8 +324,8 @@ $.extend(jqWindowManager, {
             }
             if (window.settings.overlayable) {
                 window.addEventListener(ListenerStorage.events.beforeShow, [this, this._showOverlay]);
-                window.addEventListener(ListenerStorage.events.afterClose, [this, this._deleteWindow]);
             }
+            window.addEventListener(ListenerStorage.events.afterClose, [this, this._deleteWindow]);
             window.create()
                   ._setId(this.getWindowCount() + 1)
                   .focus();
