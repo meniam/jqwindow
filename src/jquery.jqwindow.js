@@ -88,7 +88,7 @@ $.jqPopupWindow = function(elem, name, options) {
     /** @var window jqWindow */
     var window = $.jqWindowManager().addWindow(name, options);
 
-    window.controlElement = elem;
+    window.controlElement = elem.get(0);
 
     var arrow = $('<div />').addClass(options.pointerClass)
                             .css({position : 'absolute'})
@@ -870,7 +870,7 @@ $.extend(jqWindow, {
                     $(window).unbind('mousemove.jqwindow_resize');
                     $(window).unbind('mouseup.jqwindow_resize');
                     jqW.listeners.notify(ListenerStorage.events.afterResize, jqW);
-                }
+                };
                 $('<div></div>').css({position : 'absolute',
                                       top      : 0,
                                       right    : 0,
@@ -1340,7 +1340,12 @@ $.extend(jqWindow, {
          */
         setContent : function(content) {
             if (this.listeners.notify(ListenerStorage.events.beforeSetContent, this)) {
-                this.content.html(content);
+                if (content instanceof $) {
+                    this.content.empty();
+                    this.content.prepend(content);
+                } else {
+                    this.content.html(content);
+                }
                 if (this.settings.contentOverflowY == 'autoresize') {
                     if (!this.isVisible) {
                         this.window.show();
