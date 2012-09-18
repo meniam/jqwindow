@@ -317,21 +317,18 @@ $.extend(jqWindowManager, {
          */
         addWindow : function(name, options) {
             var window = new jqWindow(name, this, options);
-            if (window.settings.overlayable) {
-                window.addEventListener(ListenerStorage.events.beforeShow, [this, this._showOverlay]);
-            }
             window.addEventListener(ListenerStorage.events.beforeFocus, [this, this._focusWindow]);
             window.addEventListener([this, this._eventHandler]);
             if (this.settings.logLevel >= 3) {
                 window.addEventListener([this.logger, this.logger._eventHandler]);
             }
-            window.addEventListener(ListenerStorage.events.afterBlur, [this, this._blurWindow]);
-            window.addEventListener(ListenerStorage.events.afterHide, [this, this._hideWindow]);
+            if (window.settings.overlayable) {
+                window.addEventListener(ListenerStorage.events.beforeShow, [this, this._showOverlay]);
+            }
             window.addEventListener(ListenerStorage.events.afterClose, [this, this._deleteWindow]);
-
             window.create()
-                  ._setId(this.getWindowCount() + 1);
-                  //.focus();
+                  ._setId(this.getWindowCount() + 1)
+                  .focus();
 
             this.windows.push(window);
             return window;
@@ -383,7 +380,7 @@ $.extend(jqWindowManager, {
         getFocusedWindow : function() {
             if (this.layers.length) {
                 for (var i = this.layers.length - 1; i >= 0; i--) {
-                    if (this.layers[i].isFocus /*this.layers[i] instanceof jqWindow*/) {
+                    if (this.layers[i] instanceof jqWindow) {
                         return this.layers[i];
                     }
                 }
@@ -436,8 +433,8 @@ $.extend(jqWindowManager, {
             }
 
             if (window) {
-                if (!window.isFocus) {
-                    var focusedWindow = this.getFocusedWindow();
+                var focusedWindow = this.getFocusedWindow();
+                if (window != focusedWindow) {
                     if (window.getZindex()) {
                         this._deleteLayer(window);
                     }
@@ -452,27 +449,6 @@ $.extend(jqWindowManager, {
                 }
             }
             return true;
-        },
-        _blurWindow : function(window) {
-            if (!window instanceof jqWindow) {
-                window = this.getWindow(window);
-            }
-            if (window) {
-                var layerKeyOfWindow = 0;
-                for (var key in this.layers) {
-                    if (this.layers[key].getId() == window.getId()) {
-                        layerKeyOfWindow = key;
-                        break;
-                    }
-                }
-                for (var key = layerKeyOfWindow - 1; key >= 0; key--) {
-                    if (this.layers[key].isVisible) {
-                        this.layers[key].focus();
-                        break;
-                    }
-                }
-            }
-            return this;
         },
         /**
          * Show overlay on window focus
@@ -526,7 +502,7 @@ $.extend(jqWindowManager, {
         _checkOverlayVisibility : function() {
             var hideOverlay = true;
             for (var i = this.layers.length - 1; i >= 0; i--) {
-                if (this.layers[i].settings.overlayable && this.layers[i].isVisible) {
+                if (this.layers[i].settings.overlayable) {
                     this._showOverlay(this.layers[i]);
                     hideOverlay = false;
                     break;
@@ -549,7 +525,6 @@ $.extend(jqWindowManager, {
             }
             if (window) {
                 for (var key in this.layers) {
-                    //@todo why check z-index?
                     if (this.layers[key].getZindex() == window.getZindex()) {
                         this.layers.splice(key, 1);
                         break;
@@ -588,10 +563,9 @@ $.extend(jqWindowManager, {
             if (!window instanceof jqWindow) {
                 window = this.getWindow(window);
             }
-            if (window && window.settings.overlayable) {
-                this._checkOverlayVisibility();
+            if (window) {
+
             }
-            return this;
         },
         /**
          * Handler of windows event
@@ -757,13 +731,9 @@ $.extend(jqWindow, {
     },
     prototype : {
         /**
-         * @type {Boolean}
+         * @type {boolean}
          */
         isVisible : false,
-        /**
-         * @type {Boolean}
-         */
-        isFocus : false,
         /**
          * At this point we create DOM structure
          * for new window, but don't show it
@@ -1030,7 +1000,6 @@ $.extend(jqWindow, {
                 this.window.show();
                 this.isVisible = true;
                 this.listeners.notify(ListenerStorage.events.afterShow, this);
-                this.focus();
             }
             return this;
         },
@@ -1044,7 +1013,6 @@ $.extend(jqWindow, {
                 this.window.hide();
                 this.isVisible = false;
                 this.listeners.notify(ListenerStorage.events.afterHide, this);
-                this.blur();
             }
             return this;
         },
@@ -1066,7 +1034,6 @@ $.extend(jqWindow, {
         focus : function() {
             if (this.listeners.notify(ListenerStorage.events.beforeFocus, this)) {
                 this.window.addClass(this.settings.focusClass);
-                this.isFocus = true;
                 this.listeners.notify(ListenerStorage.events.afterFocus, this);
             }
             return this;
@@ -1079,7 +1046,6 @@ $.extend(jqWindow, {
         blur : function() {
             if (this.listeners.notify(ListenerStorage.events.beforeBlur, this)) {
                 this.window.removeClass(this.settings.focusClass);
-                this.isFocus = false;
                 this.listeners.notify(ListenerStorage.events.afterBlur, this);
             }
             return this;
