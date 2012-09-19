@@ -307,6 +307,7 @@ $.extend(jqWindowManager, {
         overlayClass      : 'jqwindow_overlay'
     },
     prototype : {
+        lastWindowId : 1,
         /**
          * Add new window
          *
@@ -327,8 +328,10 @@ $.extend(jqWindowManager, {
             }
             window.addEventListener(ListenerStorage.events.afterClose, [this, this._deleteWindow]);
             window.create()
-                  ._setId(this.getWindowCount() + 1)
+                  ._setId(this.lastWindowId)
                   .focus();
+
+            this.lastWindowId++;
 
             this.windows.push(window);
             return window;
