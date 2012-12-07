@@ -122,7 +122,7 @@ $.jqPopupWindow = function(elem, name, options) {
             arrow.addClass('down');
             break;
         default :
-            top += elem.height() + options.pointerHeight + options.padding;
+            top += elem.outerHeight() + options.pointerHeight + options.padding;
             arrow.css({
                 top    : -options.pointerHeight,
                 bottom : 'auto'
@@ -152,15 +152,15 @@ $.jqPopupWindow = function(elem, name, options) {
     var arrowRight = null;
     switch(options.horizontalAlign) {
         case 'right':
-            left -= window.window.width() - elem.width();
-            arrowRight = Math.round(elem.width() / 2);
+            left -= window.window.width() - elem.outerWidth();
+            arrowRight = Math.round(elem.outerWidth() / 2);
             break;
         case 'left':
-            arrowLeft = Math.round(elem.width() / 2);
+            arrowLeft = Math.round(elem.outerWidth() / 2);
             break;
         default :
-            left -= Math.round(window.window.width() / 2) - Math.round(elem.width() / 2);
-            arrowLeft = elemLeft + elem.width() / 2 - left;
+            left -= Math.round(window.window.width() / 2) - Math.round(elem.outerWidth() / 2);
+            arrowLeft = elemLeft + elem.outerWidth() / 2 - left;
     }
     if (arrowLeft != null) {
         arrowLeft -= Math.round(options.pointerWidth / 2);
@@ -210,7 +210,7 @@ $.jqPopupWindow = function(elem, name, options) {
                 arrow.addClass('down');
                 break;
             default :
-                top += elem.height() + options.pointerHeight + options.padding;
+                top += elem.outerHeight() + options.pointerHeight + options.padding;
                 arrow.css({
                     top    : -options.pointerHeight,
                     bottom : 'auto'
