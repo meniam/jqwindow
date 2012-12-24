@@ -87,7 +87,7 @@ $.jqPopupWindow = function(elem, name, options) {
 
     /** @var window jqWindow */
     var window = $.jqWindowManager().addWindow(name, options);
-
+    window.type = 'popup';
     window.controlElement = elem.get(0);
 
     var arrow = $('<div />').addClass(options.pointerClass)
@@ -376,6 +376,38 @@ $.extend(jqWindowManager, {
             return this.windows.length;
         },
         /**
+         * Get windows array
+         *
+         * @return {jqWindow[]}
+         */
+        getWindowList : function() {
+            return this.windows;
+        },
+
+        /**
+         * Close all windows by type (popup|flow). If type not specified all windows will be closed.
+         * @param {String|null} window type
+         */
+        closeWindowsByType : function(type) {
+            var type = type || null;
+            var windowsCount = this.getWindowCount();
+            //Reverse for in the reason of "this.windows.slice" in after_close
+            for (var i = windowsCount - 1; i >= 0; i--) {
+                var window = this.windows[i];
+                if (!type || window.getType() == type) {
+                    window.close();
+                }
+            }
+        },
+
+        /**
+         * Close popup windows
+         */
+        closePopupWindows : function() {
+            this.closeWindowsByType('popup');
+        },
+
+        /**
          * Get focused window
          *
          * @return {jqWindow|null}
@@ -663,6 +695,7 @@ jqWindow = function(name, manager, options) {
     this.name        = name || 'unnamed';
     this.manager     = manager;
     this.listeners   = new ListenerStorage();
+    this.type        = 'flow';
 
     if (this.settings.modal) {
         this.settings.overlayable = true;
@@ -1023,11 +1056,11 @@ $.extend(jqWindow, {
          * Close window
          */
         close : function() {
-            if (this.listeners.notify(ListenerStorage.events.beforeClose, this)) {
+           if (this.listeners.notify(ListenerStorage.events.beforeClose, this)) {
                 this.window.remove();
                 this.listeners.notify(ListenerStorage.events.afterClose, this);
                 delete this;
-            }
+           }
         },
         /**
          * Focus window
@@ -1407,6 +1440,18 @@ $.extend(jqWindow, {
         getName : function() {
             return this.name;
         },
+
+        getType : function() {
+            return this.type;
+        },
+
+        isFlowWindow : function() {
+            return this.type == 'flow';
+        },
+
+        isPopupWindow : function() {
+            return this.type == 'popup';
+        }
         /**
          * Recount size and position of window
          *
@@ -1522,36 +1567,36 @@ $.extend(ListenerStorage, {
          * @return {Boolean}
          */
         notify : function(event) {
-            var result = true;
-            if (this.listeners[event]) {
-                var args = Array.prototype.slice.call(arguments, 1);
-                for (var i in this.listeners[event]) {
-                    var listener = this.listeners[event][i];
-                    if (listener instanceof Array) {
-                        result = listener[1].apply(listener[0], args);
-                    } else {
-                        result = listener.apply(null, args);
-                    }
-                    if (result == false) {
-                        return result;
-                    }
-                }
-            }
-            if (this.listeners['all']) {
-                for (var i in this.listeners['all']) {
-                    var listener = this.listeners['all'][i];
-                    if (listener instanceof Array) {
-                        result = listener[1].apply(listener[0], arguments);
-                    } else {
-                        result = listener.apply(null, arguments);
-                    }
-                    if (result == false) {
-                        return result;
-                    }
-                }
-            }
-            return result;
-        }
+           var result = true;
+           if (this.listeners[event]) {
+               var args = Array.prototype.slice.call(arguments, 1);
+               for (var i in this.listeners[event]) {
+                   var listener = this.listeners[event][i];
+                   if (listener instanceof Array) {
+                       result = listener[1].apply(listener[0], args);
+                   } else {
+                       result = listener.apply(null, args);
+                   }
+                   if (result == false) {
+                       return result;
+                   }
+               }
+           }
+           if (this.listeners['all']) {
+               for (var i in this.listeners['all']) {
+                   var listener = this.listeners['all'][i];
+                   if (listener instanceof Array) {
+                       result = listener[1].apply(listener[0], arguments);
+                   } else {
+                       result = listener.apply(null, arguments);
+                   }
+                   if (result == false) {
+                       return result;
+                   }
+               }
+           }
+           return result;
+       }
     }
 });
 /**
