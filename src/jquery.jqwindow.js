@@ -385,30 +385,28 @@ $.extend(jqWindowManager, {
         },
 
         /**
-         * Close all windows
+         * Close all windows by type (popup|flow). If type not specified all windows will be closed.
+         * @param {String|null} window type
          */
-        closeAllWindows : function() {
+        closeWindowsByType : function(type) {
+            var type = type || null;
             var windowsCount = this.getWindowCount();
             //Reverse for in the reason of "this.windows.slice" in after_close
             for (var i = windowsCount - 1; i >= 0; i--) {
                 var window = this.windows[i];
-                window.close();
-            }
-        },
-
-        /**
-         * Close all popup windows
-         */
-        closeAllPopupWindows : function() {
-            var windowsCount = this.getWindowCount();
-            //Reverse for in the reason of "this.windows.slice" in after_close
-            for (var i = windowsCount - 1; i >= 0; i--) {
-                var window = this.windows[i];
-                if (window.isPopupWindow()) {
+                if (!type || window.getType() == type) {
                     window.close();
                 }
             }
         },
+
+        /**
+         * Close popup windows
+         */
+        closePopupWindows : function() {
+            this.closeWindowsByType('popup');
+        },
+
         /**
          * Get focused window
          *
@@ -1441,6 +1439,10 @@ $.extend(jqWindow, {
          */
         getName : function() {
             return this.name;
+        },
+
+        getType : function() {
+            return this.type;
         },
 
         isFlowWindow : function() {
