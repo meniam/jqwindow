@@ -758,6 +758,7 @@ $.extend(jqWindow, {
             // create common DOM-structure
             jqW.window = $('<div></div>').addClass(jqW.settings.windowClass)
                                          .addClass(jqW.settings.style)
+                                         .addClass(jqW.settings.theme)
                                          .attr('name', jqW.name)
                                          .bind('mousedown.jqwindow_focus', function() {
                                             jqW.focus();
