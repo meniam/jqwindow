@@ -1324,6 +1324,16 @@ $.extend(jqWindow, {
             return this;
         },
         /**
+         * Notify all listeners about event
+         *
+         * @param {String} event
+         *
+         * @return {Boolean}
+         */
+        notifyEventListeners : function(event) {
+            return this.listeners.notify(event, this);
+        },
+        /**
          * Get window unique id
          *
          * @return {Integer}
