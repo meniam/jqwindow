@@ -1331,7 +1331,11 @@ $.extend(jqWindow, {
          * @return {Boolean}
          */
         notifyEventListeners : function(event) {
-            return this.listeners.notify(event, this);
+            var args = Array.prototype.slice.call(arguments, 1);
+            args.unshift(this);
+            args.unshift(event);
+            return this.listeners.notify.apply(this.listeners, args);
+            /*return this.listeners.notify(event, this);*/
         },
         /**
          * Get window unique id
@@ -1420,8 +1424,13 @@ $.extend(jqWindow, {
                     if (!this.isVisible) {
                         this.window.hide();
                     }
+                    var containerHeight = this.getContainer().isWindow ? Math.max($(document).height(), this.getContainer().height()) : this.getContainer().height();
                     if (this.settings.maxHeight && windowHeight > this.settings.maxHeight) {
                         this.body.css('overflow-y', 'auto');
+                        windowHeight = this.settings.maxHeight;
+                    } else if (!this.settings.allowSpadeSouth && windowHeight > containerHeight) {
+                        this.body.css('overflow-y', 'auto');
+                        windowHeight = containerHeight;
                     } else {
                         this.body.css('overflow-y', 'none');
                     }
