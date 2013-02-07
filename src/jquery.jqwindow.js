@@ -1418,6 +1418,7 @@ $.extend(jqWindow, {
                     if (!this.isVisible) {
                         this.window.show();
                     }
+
                     var contentHeight = this.content.outerHeight(true);
                     var bodyHeight = this.body.height();
                     var windowHeight = contentHeight + this.header.outerHeight(true) + (this.body.outerHeight(true) - bodyHeight);
