@@ -1272,13 +1272,37 @@ $.extend(jqWindow, {
                 }
             }
             if (height) {
-                var containerHeight = this.getContainer().height();
-                if (height[height.length - 1] == '%') {
-                    height = parseInt(height.substr(0, height.length - 1)) * containerHeight / 100;
+                if (height == 'auto') {
+                    if (!this.isVisible) {
+                        this.window.show();
+                    }
+
+                    var contentHeight = this.content.outerHeight(true);
+                    var bodyHeight = this.body.height();
+                    var windowHeight = contentHeight + this.header.outerHeight(true) + (this.body.outerHeight(true) - bodyHeight);
+                    if (!this.isVisible) {
+                        this.window.hide();
+                    }
+                    var containerHeight = this.getContainer().height();
+                    if (this.settings.maxHeight && windowHeight > this.settings.maxHeight) {
+                        this.body.css('overflow-y', 'auto');
+                        windowHeight = this.settings.maxHeight;
+                    } else if (!this.settings.allowSpadeSouth && windowHeight > containerHeight) {
+                        this.body.css('overflow-y', 'auto');
+                        windowHeight = containerHeight;
+                    } else {
+                        this.body.css('overflow-y', 'none');
+                    }
+                    height = windowHeight;
+                } else {
+                    var containerHeight = this.getContainer().height();
+                    if (height[height.length - 1] == '%') {
+                        height = parseInt(height.substr(0, height.length - 1)) * containerHeight / 100;
+                    }
+                    /*if (height > containerHeight) {
+                     height = containerHeight;
+                     }  */
                 }
-                /*if (height > containerHeight) {
-                 height = containerHeight;
-                 }  */
                 if (this.settings.minHeight > 0 && height < this.settings.minHeight) {
                     height = this.settings.minHeight;
                 } else if (this.settings.maxHeight > 0 && height > this.settings.maxHeight) {
@@ -1415,27 +1439,7 @@ $.extend(jqWindow, {
                     this.content.html(content);
                 }
                 if (this.settings.contentOverflowY == 'autoresize') {
-                    if (!this.isVisible) {
-                        this.window.show();
-                    }
-
-                    var contentHeight = this.content.outerHeight(true);
-                    var bodyHeight = this.body.height();
-                    var windowHeight = contentHeight + this.header.outerHeight(true) + (this.body.outerHeight(true) - bodyHeight);
-                    if (!this.isVisible) {
-                        this.window.hide();
-                    }
-                    var containerHeight = this.getContainer().isWindow ? Math.max($(document).height(), this.getContainer().height()) : this.getContainer().height();
-                    if (this.settings.maxHeight && windowHeight > this.settings.maxHeight) {
-                        this.body.css('overflow-y', 'auto');
-                        windowHeight = this.settings.maxHeight;
-                    } else if (!this.settings.allowSpadeSouth && windowHeight > containerHeight) {
-                        this.body.css('overflow-y', 'auto');
-                        windowHeight = containerHeight;
-                    } else {
-                        this.body.css('overflow-y', 'none');
-                    }
-                    this.resize(undefined, windowHeight);
+                    this.resize(undefined, 'auto');
                 }
                 this.listeners.notify(ListenerStorage.events.afterSetContent, this);
             }
