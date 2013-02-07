@@ -1283,7 +1283,7 @@ $.extend(jqWindow, {
                     if (!this.isVisible) {
                         this.window.hide();
                     }
-                    var containerHeight = this.getContainer().height();
+                    var containerHeight = this.getContainer().height() - this.window.offset().top;
                     if (this.settings.maxHeight && windowHeight > this.settings.maxHeight) {
                         this.body.css('overflow-y', 'auto');
                         windowHeight = this.settings.maxHeight;
