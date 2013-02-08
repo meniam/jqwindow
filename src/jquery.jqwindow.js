@@ -1276,20 +1276,20 @@ $.extend(jqWindow, {
                     if (!this.isVisible) {
                         this.window.show();
                     }
-
+                    var marginTop = this.window.offset().top - $(window).scrollTop();
                     var contentHeight = this.content.outerHeight(true);
                     var bodyHeight = this.body.height();
                     var windowHeight = contentHeight + this.header.outerHeight(true) + (this.body.outerHeight(true) - bodyHeight);
                     if (!this.isVisible) {
                         this.window.hide();
                     }
-                    var containerHeight = this.getContainer().height() - this.window.offset().top;
-                    if (this.settings.maxHeight && windowHeight > this.settings.maxHeight) {
+                    var containerHeight = this.getContainer().height();
+                    if (this.settings.maxHeight && (windowHeight + marginTop) > this.settings.maxHeight) {
                         this.body.css('overflow-y', 'auto');
                         windowHeight = this.settings.maxHeight;
-                    } else if (!this.settings.allowSpadeSouth && windowHeight > containerHeight) {
+                    } else if (!this.settings.allowSpadeSouth && (windowHeight  + marginTop) > containerHeight) {
                         this.body.css('overflow-y', 'auto');
-                        windowHeight = containerHeight;
+                        windowHeight = containerHeight - marginTop;
                     } else {
                         this.body.css('overflow-y', 'none');
                     }
